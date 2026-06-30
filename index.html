@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas - Video Player UI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <button class="icon-btn menu-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <div class="logo">
+                <svg class="logo-icon" width="32" height="32" viewBox="0 0 32 32">
+                    <path d="M16 2L28 28H4L16 2Z" stroke="currentColor" stroke-width="2" fill="none"/>
+                </svg>
+                <div class="logo-text">
+                    <span class="brand-name">ATLAS</span>
+                    <span class="brand-subtitle">Offline Video Player</span>
+                </div>
+            </div>
+            <button class="icon-btn search-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                </svg>
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Continue Watching Section -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Continue Watching <span class="arrow">›</span></h2>
+                    <button class="icon-btn more-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="5" r="2"></circle>
+                            <circle cx="12" cy="12" r="2"></circle>
+                            <circle cx="12" cy="19" r="2"></circle>
+                        </svg>
+                    </button>
+                </div>
+                <div class="horizontal-scroll continue-watching-scroll">
+                    <div class="continue-card">
+                        <div class="card-image">
+                            <div class="placeholder-image"></div>
+                            <button class="play-overlay">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <polygon points="5,3 19,12 5,21"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title">Interstellar (2014)</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 42%"></div>
+                            </div>
+                            <span class="time-info">1:06:22 / 2:49:04</span>
+                        </div>
+                    </div>
+                    <div class="continue-card">
+                        <div class="card-image">
+                            <div class="placeholder-image"></div>
+                            <button class="play-overlay">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <polygon points="5,3 19,12 5,21"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title">The Dark Knight (2008)</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 30%"></div>
+                            </div>
+                            <span class="time-info">42:15 / 2:32:13</span>
+                        </div>
+                    </div>
+                    <div class="continue-card">
+                        <div class="card-image">
+                            <div class="placeholder-image"></div>
+                            <button class="play-overlay">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <polygon points="5,3 19,12 5,21"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title">Spirited Away (2001)</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 21%"></div>
+                            </div>
+                            <span class="time-info">26:40 / 2:04:47</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Access Grid -->
+            <section class="quick-access">
+                <div class="quick-access-item">
+                    <div class="quick-access-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12,6 12,12 16,14"></polyline>
+                        </svg>
+                    </div>
+                    <span class="quick-access-label">Recent</span>
+                    <span class="quick-access-count">24</span>
+                </div>
+                <div class="quick-access-item">
+                    <div class="quick-access-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                    </div>
+                    <span class="quick-access-label">Favorites</span>
+                    <span class="quick-access-count">36</span>
+                </div>
+                <div class="quick-access-item">
+                    <div class="quick-access-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <span class="quick-access-label">Folders</span>
+                    <span class="quick-access-count">12</span>
+                </div>
+                <div class="quick-access-item">
+                    <div class="quick-access-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                    </div>
+                    <span class="quick-access-label">Playlists</span>
+                    <span class="quick-access-count">8</span>
+                </div>
+                <div class="quick-access-item">
+                    <div class="quick-access-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7,10 12,15 17,10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </div>
+                    <span class="quick-access-label">Downloads</span>
+                    <span class="quick-access-count">17</span>
+                </div>
+            </section>
+
+            <!-- Recently Added Section -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Recently Added <span class="arrow">›</span></h2>
+                    <a href="#" class="view-all">View all</a>
+                </div>
+                <div class="horizontal-scroll movies-scroll">
+                    <div class="movie-card">
+                        <div class="movie-image">
+                            <div class="placeholder-image"></div>
+                            <span class="duration-badge">2:46:12</span>
+                        </div>
+                        <div class="movie-info">
+                            <span class="movie-title">Dune</span>
+                            <span class="movie-subtitle">Part Two (2024)</span>
+                        </div>
+                        <button class="icon-btn card-menu">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="5" r="2"></circle>
+                                <circle cx="12" cy="12" r="2"></circle>
+                                <circle cx="12" cy="19" r="2"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="movie-card">
+                        <div class="movie-image">
+                            <div class="placeholder-image"></div>
+                            <span class="duration-badge">3:00:11</span>
+                        </div>
+                        <div class="movie-info">
+                            <span class="movie-title">Oppenheimer</span>
+                            <span class="movie-subtitle">(2023)</span>
+                        </div>
+                        <button class="icon-btn card-menu">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="5" r="2"></circle>
+                                <circle cx="12" cy="12" r="2"></circle>
+                                <circle cx="12" cy="19" r="2"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="movie-card">
+                        <div class="movie-image">
+                            <div class="placeholder-image"></div>
+                            <span class="duration-badge">3:01:10</span>
+                        </div>
+                        <div class="movie-info">
+                            <span class="movie-title">Avengers</span>
+                            <span class="movie-subtitle">Endgame (2019)</span>
+                        </div>
+                        <button class="icon-btn card-menu">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="5" r="2"></circle>
+                                <circle cx="12" cy="12" r="2"></circle>
+                                <circle cx="12" cy="19" r="2"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="movie-card">
+                        <div class="movie-image">
+                            <div class="placeholder-image"></div>
+                            <span class="duration-badge">1:46:36</span>
+                        </div>
+                        <div class="movie-info">
+                            <span class="movie-title">Your Name.</span>
+                            <span class="movie-subtitle">(2016)</span>
+                        </div>
+                        <button class="icon-btn card-menu">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="5" r="2"></circle>
+                                <circle cx="12" cy="12" r="2"></circle>
+                                <circle cx="12" cy="19" r="2"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="movie-card">
+                        <div class="movie-image">
+                            <div class="placeholder-image"></div>
+                            <span class="duration-badge">2:56:11</span>
+                        </div>
+                        <div class="movie-info">
+                            <span class="movie-title">The Batman</span>
+                            <span class="movie-subtitle">(2022)</span>
+                        </div>
+                        <button class="icon-btn card-menu">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="5" r="2"></circle>
+                                <circle cx="12" cy="12" r="2"></circle>
+                                <circle cx="12" cy="19" r="2"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Folders Section -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Folders <span class="arrow">›</span></h2>
+                    <a href="#" class="view-all">View all</a>
+                </div>
+                <div class="horizontal-scroll folders-scroll">
+                    <div class="folder-card">
+                        <div class="folder-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </div>
+                        <span class="folder-name">Movies</span>
+                        <span class="folder-count">356 Videos</span>
+                    </div>
+                    <div class="folder-card">
+                        <div class="folder-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="23,7 16,12 23,17"></polygon>
+                                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                            </svg>
+                        </div>
+                        <span class="folder-name">TV Shows</span>
+                        <span class="folder-count">48 Videos</span>
+                    </div>
+                    <div class="folder-card">
+                        <div class="folder-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </div>
+                        <span class="folder-name">Anime</span>
+                        <span class="folder-count">81 Videos</span>
+                    </div>
+                    <div class="folder-card">
+                        <div class="folder-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </div>
+                        <span class="folder-name">Courses</span>
+                        <span class="folder-count">27 Videos</span>
+                    </div>
+                    <div class="folder-card">
+                        <div class="folder-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7,10 12,15 17,10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </div>
+                        <span class="folder-name">Downloads</span>
+                        <span class="folder-count">17 Videos</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9,22 9,12 15,12 15,22"></polyline>
+                </svg>
+                <span>Home</span>
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>Library</span>
+            </a>
+            <a href="#" class="nav-item player-btn">
+                <div class="player-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5,3 19,12 5,21"></polygon>
+                    </svg>
+                </div>
+                <span>Player</span>
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                </svg>
+                <span>Search</span>
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <span>Settings</span>
+            </a>
+        </nav>
+    </div>
+</body>
+</html>
