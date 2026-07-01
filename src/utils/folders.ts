@@ -14,8 +14,6 @@ export function groupVideosByFolder(videos: LibraryVideo[]): FolderGroup[] {
     const path = video.file.path;
     const lastSlash = path.lastIndexOf('/');
     const folderPath = lastSlash > 0 ? path.slice(0, lastSlash) : '/';
-    const folderName = folderPath.split('/').pop() ?? 'Unknown';
-
     const existing = folderMap.get(folderPath);
     if (existing) {
       existing.push(video);

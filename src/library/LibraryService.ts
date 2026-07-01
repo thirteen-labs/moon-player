@@ -1,12 +1,11 @@
 import { Scanner } from './Scanner';
 import { MetadataExtractor } from './MetadataExtractor';
+import { ThumbnailService } from './ThumbnailService';
 import { Directory, File } from 'expo-file-system';
 import type {
   VideoFile,
-  VideoMetadata,
   LibraryVideo,
   SubtitleFile,
-  ScanProgress,
   ScanResult,
   ScanCallback,
 } from './types';
@@ -15,6 +14,7 @@ import { getFileNameWithoutExt, isSubtitleFile, inferLanguageFromFilename } from
 export class LibraryService {
   private scanner: Scanner;
   private metadataExtractor: MetadataExtractor;
+  private thumbnailService: ThumbnailService;
   private videos: Map<string, LibraryVideo> = new Map();
   private scannedUris: Set<string> = new Set();
   private scanInProgress = false;
@@ -22,6 +22,7 @@ export class LibraryService {
   constructor() {
     this.scanner = new Scanner();
     this.metadataExtractor = new MetadataExtractor();
+    this.thumbnailService = new ThumbnailService();
   }
 
   initialize(videos: Record<string, LibraryVideo>, scannedUris: string[]): void {
@@ -47,6 +48,18 @@ export class LibraryService {
 
       const metadataResults = await this.metadataExtractor.extractBatch(allFiles, onProgress);
 
+      const thumbnails = await this.thumbnailService.generateBatch(
+        allFiles.map((f) => f.uri),
+        (current, total) => {
+          onProgress?.({
+            totalFiles: total,
+            scannedFiles: current,
+            currentPath: 'Generating thumbnails...',
+            phase: 'extracting',
+          });
+        },
+      );
+
       const added: LibraryVideo[] = [];
       const now = Date.now();
       const scannedUris = new Set<string>();
@@ -61,7 +74,7 @@ export class LibraryService {
           file,
           metadata,
           subtitles,
-          thumbnailUri: null,
+          thumbnailUri: thumbnails.get(file.uri) ?? null,
           addedAt: existing?.addedAt ?? now,
           lastPlayedAt: existing?.lastPlayedAt ?? null,
           playCount: existing?.playCount ?? 0,
@@ -179,7 +192,7 @@ export class LibraryService {
           uri: entry.uri,
           path: entry.uri,
           name: entry.name,
-          extension: entry.extension.toLowerCase() as any,
+          extension: entry.extension.toLowerCase() as SubtitleFile['extension'],
           language: inferLanguageFromFilename(entry.name),
         });
       }

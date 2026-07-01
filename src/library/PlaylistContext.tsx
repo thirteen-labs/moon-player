@@ -50,7 +50,7 @@ export function PlaylistProvider({ children }: PlaylistProviderProps) {
   }, []);
 
   useEffect(() => {
-    loadPlaylists();
+    loadPlaylists(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [loadPlaylists]);
 
   const createPlaylist = useCallback(async (name: string): Promise<Playlist> => {

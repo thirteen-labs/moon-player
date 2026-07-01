@@ -74,3 +74,25 @@ export interface Playlist {
   createdAt: number;
   updatedAt: number;
 }
+
+export interface VideoCollection {
+  id: string;
+  name: string;
+  icon: string;
+  filter: (videos: LibraryVideo[]) => LibraryVideo[];
+}
+
+export interface Bookmark {
+  id: string;
+  videoId: string;
+  timestamp: number;
+  label: string;
+  createdAt: number;
+}
+
+export interface SleepTimerState {
+  isActive: boolean;
+  remainingSeconds: number;
+  triggerAt: 'pause' | 'stop';
+  startedAt: number;
+}

@@ -10,7 +10,7 @@ interface QuickAccessButtonProps {
 
 export function QuickAccessButton({ icon, label, count, onPress }: QuickAccessButtonProps) {
   const { colors, theme } = useTheme();
-  const { spacing, borderRadius, typography } = theme;
+  const { spacing, typography } = theme;
 
   return (
     <Pressable

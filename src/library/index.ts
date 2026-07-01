@@ -17,4 +17,6 @@ export type {
   VideoExtension,
   SubtitleExtension,
   Playlist,
+  Bookmark,
+  SleepTimerState,
 } from './types';

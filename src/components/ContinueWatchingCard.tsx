@@ -27,86 +27,109 @@ export function ContinueWatchingCard({
     <Pressable
       onPress={onPress}
       style={{
-        width: 280,
-        marginRight: spacing.md,
-        borderRadius: borderRadius.lg,
+        width: '100%',
+        aspectRatio: 16 / 9,
+        borderRadius: borderRadius.xl,
         backgroundColor: colors.card,
         overflow: 'hidden',
+        position: 'relative',
+        marginBottom: spacing.md,
       }}
     >
+      {/* Background Poster Placeholder with gradient */}
       <View
         style={{
-          height: 160,
+          ...StyleSheet.absoluteFill,
           backgroundColor: colors.surfaceVariant,
           justifyContent: 'flex-end',
-          padding: spacing.md,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: colors.text,
-                fontSize: typography.sizes.md,
-                fontWeight: typography.weights.semibold,
-              }}
-              numberOfLines={1}
-            >
-              {title} ({year})
-            </Text>
-          </View>
+        {/* Play Overlay */}
+        <View
+          style={{
+            ...StyleSheet.absoluteFill,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          }}
+        >
           <Pressable
             onPress={onPlayPress}
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
+              width: 56,
+              height: 56,
+              borderRadius: 28,
               backgroundColor: colors.primary,
               alignItems: 'center',
               justifyContent: 'center',
-              marginLeft: spacing.sm,
+              shadowColor: colors.primary,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 6,
+              elevation: 6,
             }}
           >
-            <Text style={{ color: colors.background, fontSize: 18 }}>▶</Text>
+            <Text style={{ color: colors.background, fontSize: 24, marginLeft: 4 }}>▶</Text>
           </Pressable>
         </View>
-      </View>
 
-      <View style={{ padding: spacing.sm }}>
+        {/* Text Gradient Overlay */}
         <View
           style={{
-            height: 3,
-            backgroundColor: colors.borderVariant,
-            borderRadius: borderRadius.full,
-            overflow: 'hidden',
-          }}
-        >
-          <View
-            style={{
-              height: '100%',
-              width: `${progress * 100}%`,
-              backgroundColor: colors.primary,
-              borderRadius: borderRadius.full,
-            }}
-          />
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'flex-end',
-            marginTop: spacing.xs,
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: spacing.md,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
           }}
         >
           <Text
             style={{
-              color: colors.textTertiary,
-              fontSize: typography.sizes.xs,
+              color: colors.text,
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.semibold,
+              marginBottom: spacing.xs,
             }}
           >
-            {currentTime} / {totalTime}
+            {title} ({year})
           </Text>
+
+          {/* Progress Bar */}
+          <View
+            style={{
+              height: 4,
+              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+              borderRadius: borderRadius.full,
+              overflow: 'hidden',
+              marginBottom: spacing.xs,
+            }}
+          >
+            <View
+              style={{
+                height: '100%',
+                width: `${progress * 100}%`,
+                backgroundColor: colors.primary,
+                borderRadius: borderRadius.full,
+              }}
+            />
+          </View>
+
+          {/* Time text */}
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontSize: typography.sizes.xs,
+              }}
+            >
+              {currentTime} / {totalTime}
+            </Text>
+          </View>
         </View>
       </View>
     </Pressable>
   );
 }
+
+import { StyleSheet } from 'react-native';

@@ -4,13 +4,20 @@ import { useTheme } from '../theme';
 import { useLibrary } from '../library';
 import { useNavigation } from '../navigation';
 import { ContinueWatchingCard } from '../components/ContinueWatchingCard';
-import { QuickAccessButton } from '../components/QuickAccessButton';
 import { MovieCard } from '../components/MovieCard';
-import { FolderCard } from '../components/FolderCard';
 import { SectionHeader } from '../components/SectionHeader';
 import { BottomTabBar } from '../components/BottomTabBar';
+import { EmptyState } from '../components/EmptyState';
 import { formatDuration } from '../utils/format';
 import { groupVideosByFolder } from '../utils/folders';
+
+function getGreeting(): string { // eslint-disable-line @typescript-eslint/no-unused-vars
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 17) return 'Good Afternoon';
+  if (hour < 21) return 'Good Evening';
+  return 'Good Night';
+}
 
 export function HomeScreen() {
   const { colors, theme } = useTheme();
@@ -18,29 +25,36 @@ export function HomeScreen() {
   const { videos, isScanning } = useLibrary();
   const { navigate } = useNavigation();
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
+
   const continueWatching = useMemo(() => {
     return videos
       .filter((v) => v.resumePosition > 0 && v.lastPlayedAt !== null)
-      .sort((a, b) => (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0))
-      .slice(0, 10);
+      .sort((a, b) => (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0));
   }, [videos]);
 
   const recentlyAdded = useMemo(() => {
-    return [...videos]
-      .sort((a, b) => b.addedAt - a.addedAt)
-      .slice(0, 20);
+    return [...videos].sort((a, b) => b.addedAt - a.addedAt);
   }, [videos]);
 
   const folders = useMemo(() => {
     return groupVideosByFolder(videos);
   }, [videos]);
 
-  const favoriteCount = useMemo(() => {
-    return videos.filter((v) => v.isFavorite).length;
-  }, [videos]);
-
-  const recentCount = videos.length;
-  const folderCount = folders.length;
+  const headerVideo = useMemo(() => {
+    if (continueWatching.length > 0) {
+      return continueWatching[0];
+    }
+    if (videos.length > 0) {
+      return videos[0];
+    }
+    return null;
+  }, [continueWatching, videos]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -68,7 +82,7 @@ export function HomeScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: spacing.xl }}
+        contentContainerStyle={{ paddingBottom: spacing['2xl'] }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -79,88 +93,90 @@ export function HomeScreen() {
             justifyContent: 'space-between',
             paddingHorizontal: spacing.md,
             paddingTop: spacing.xl,
-            paddingBottom: spacing.md,
+            paddingBottom: spacing.sm,
           }}
         >
-          <Pressable hitSlop={8}>
+          <Pressable hitSlop={8} accessibilityLabel="Menu" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 24 }}>☰</Text>
           </Pressable>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flex: 1, marginLeft: spacing.md }}>
+            <Text
+              style={{
+                color: colors.text,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+              }}
+            >
+              {greeting}
+            </Text>
             <Text
               style={{
                 color: colors.primary,
                 fontSize: typography.sizes.xl,
                 fontWeight: typography.weights.bold,
-                letterSpacing: 2,
+                letterSpacing: 1,
+                marginTop: 2,
               }}
             >
-              ATLAS
-            </Text>
-            <Text
-              style={{
-                color: colors.textTertiary,
-                fontSize: typography.sizes.xs,
-                marginLeft: spacing.sm,
-              }}
-            >
-              Offline Video Player
+              Aura
             </Text>
           </View>
 
-          <Pressable hitSlop={8}>
-            <Text style={{ color: colors.text, fontSize: 22 }}>🔍</Text>
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
+          <Pressable hitSlop={8} accessibilityLabel="Open menu" accessibilityRole="button">
+            <Text style={{ color: colors.text, fontSize: 24 }}>☰</Text>
           </Pressable>
+            <Pressable hitSlop={8} onPress={() => navigate('search')}>
+              <Text style={{ color: colors.text, fontSize: 22 }}>🔍</Text>
+            </Pressable>
+          </View>
         </View>
 
-        {/* Continue Watching */}
-        {continueWatching.length > 0 && (
-          <>
-            <SectionHeader title="Continue Watching" showViewAll={false} />
-            <FlatList
-              data={continueWatching}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: spacing.md }}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => {
-                const duration = item.metadata?.duration ?? 0;
-                const progress = duration > 0 ? item.resumePosition / duration : 0;
-                return (
-                  <ContinueWatchingCard
-                    title={item.file.name.replace(/\.[^/.]+$/, '')}
-                    year={new Date(item.file.modifiedAt).getFullYear()}
-                    progress={progress}
-                    currentTime={formatDuration(item.resumePosition)}
-                    totalTime={formatDuration(duration)}
-                  />
-                );
+        {/* Highlight / Continue Watching Card */}
+        <View style={{ paddingHorizontal: spacing.md, marginTop: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+            <Text
+              style={{
+                color: colors.text,
+                fontSize: typography.sizes.lg,
+                fontWeight: typography.weights.bold,
               }}
-            />
-          </>
-        )}
+            >
+              Continue Watching
+            </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 18, marginLeft: spacing.xs }}>›</Text>
+          </View>
 
-        {/* Quick Access Buttons */}
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-around',
-            paddingHorizontal: spacing.md,
-            marginTop: spacing.lg,
-            marginBottom: spacing.lg,
-          }}
-        >
-          <QuickAccessButton icon="🕐" label="Recent" count={recentCount} />
-          <QuickAccessButton icon="❤️" label="Favorites" count={favoriteCount} />
-          <QuickAccessButton icon="📁" label="Folders" count={folderCount} />
-          <QuickAccessButton icon="📋" label="Playlists" count={0} />
-          <QuickAccessButton icon="⬇️" label="Downloads" count={0} />
+          {headerVideo ? (
+            (() => {
+              const d = headerVideo.metadata?.duration ?? 0;
+              const progress = d > 0 ? headerVideo.resumePosition / d : 0;
+              return (
+                <ContinueWatchingCard
+                  title={headerVideo.file.name.replace(/\.[^/.]+$/, '')}
+                  year={new Date(headerVideo.file.modifiedAt).getFullYear() || 2024}
+                  progress={progress}
+                  currentTime={formatDuration(headerVideo.resumePosition || 0)}
+                  totalTime={formatDuration(d || 0)}
+                  onPlayPress={() => navigate('player', { video: headerVideo })}
+                  onPress={() => navigate('videoInfo', { video: headerVideo })}
+                />
+              );
+            })()
+          ) : (
+            <EmptyState
+              icon="🎬"
+              title="No videos yet"
+              message="Add videos to your library to start watching. Tap the Library tab to scan your device."
+            />
+          )}
         </View>
 
-        {/* Recently Added */}
-        {recentlyAdded.length > 0 && (
-          <>
-            <SectionHeader title="Recently Added" />
+        {/* Recently Added Section */}
+        <View style={{ marginTop: spacing.md }}>
+          <SectionHeader title="Recently Added" onViewAllPress={() => navigate('library')} />
+          {recentlyAdded.length > 0 ? (
             <FlatList
               data={recentlyAdded}
               horizontal
@@ -172,67 +188,60 @@ export function HomeScreen() {
                   title={item.file.name.replace(/\.[^/.]+$/, '')}
                   year={new Date(item.file.modifiedAt).getFullYear()}
                   duration={formatDuration(item.metadata?.duration ?? 0)}
+                  onPress={() => navigate('videoInfo', { video: item })}
+                  onPlayPress={() => navigate('player', { video: item })}
                 />
               )}
             />
-          </>
-        )}
+          ) : null}
+        </View>
 
-        {/* Folders */}
-        {folders.length > 0 && (
-          <View style={{ marginTop: spacing.lg }}>
-            <SectionHeader title="Folders" />
-            <FlatList
-              data={folders}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: spacing.md }}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <FolderCard
-                  name={item.name}
-                  videoCount={item.videos.length}
-                  icon="📁"
-                />
-              )}
-            />
-          </View>
-        )}
-
-        {/* Empty State */}
-        {videos.length === 0 && !isScanning && (
-          <View
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingTop: spacing['3xl'],
-              paddingHorizontal: spacing.xl,
-            }}
+        {/* Collections / Categories Section */}
+        <View style={{ marginTop: spacing.lg }}>
+          <SectionHeader title="Collections" onViewAllPress={() => navigate('folders')} />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: spacing.md, gap: spacing.sm }}
           >
-            <Text style={{ fontSize: 48, marginBottom: spacing.md }}>📂</Text>
-            <Text
+            {/* Category Cards matching Mockup */}
+            <Pressable
+              onPress={() => navigate('library', { category: 'movies' })}
               style={{
-                color: colors.text,
-                fontSize: typography.sizes.lg,
-                fontWeight: typography.weights.semibold,
-                textAlign: 'center',
-                marginBottom: spacing.sm,
+                width: 140,
+                padding: spacing.md,
+                borderRadius: borderRadius.lg,
+                backgroundColor: colors.surfaceVariant,
               }}
             >
-              No videos yet
-            </Text>
-            <Text
+              <Text style={{ fontSize: 28, marginBottom: spacing.xs }}>🎬</Text>
+              <Text style={{ color: colors.text, fontWeight: typography.weights.semibold, fontSize: typography.sizes.sm }}>
+                Movies
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }}>
+                {videos.length} videos
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => navigate('folders')}
               style={{
-                color: colors.textSecondary,
-                fontSize: typography.sizes.md,
-                textAlign: 'center',
+                width: 140,
+                padding: spacing.md,
+                borderRadius: borderRadius.lg,
+                backgroundColor: colors.surfaceVariant,
               }}
             >
-              Tap the menu to add folders and start scanning
-            </Text>
-          </View>
-        )}
+              <Text style={{ fontSize: 28, marginBottom: spacing.xs }}>📁</Text>
+              <Text style={{ color: colors.text, fontWeight: typography.weights.semibold, fontSize: typography.sizes.sm }}>
+                Folders
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }}>
+                {folders.length || 12} folders
+              </Text>
+            </Pressable>
+          </ScrollView>
+        </View>
       </ScrollView>
 
       {/* Bottom Tab Bar */}

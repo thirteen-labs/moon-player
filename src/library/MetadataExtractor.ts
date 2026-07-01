@@ -1,5 +1,5 @@
 import { getVideoInfoAsync, type VideoInfoResult } from 'expo-video-metadata';
-import type { VideoFile, VideoMetadata, ScanProgress, ScanCallback } from './types';
+import type { VideoFile, VideoMetadata, ScanCallback } from './types';
 
 function toMetadata(info: VideoInfoResult): VideoMetadata {
   const width = info.naturalOrientation === 'Portrait' ? info.height : info.width;

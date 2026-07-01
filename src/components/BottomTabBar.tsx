@@ -17,7 +17,7 @@ interface BottomTabBarProps {
 
 export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
   const { colors, theme } = useTheme();
-  const { spacing, borderRadius, typography } = theme;
+  const { spacing, typography } = theme;
 
   const tabs: TabItem[] = [
     { icon: '🏠', label: 'Home', screen: 'home', isActive: activeTab === 'home' },
@@ -50,6 +50,8 @@ export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
             <Pressable
               key={tab.label}
               onPress={() => onTabPress(tab.screen)}
+              accessibilityLabel={tab.label}
+              accessibilityRole="button"
               style={{
                 width: 64,
                 height: 64,
@@ -74,6 +76,8 @@ export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
           <Pressable
             key={tab.label}
             onPress={() => onTabPress(tab.screen)}
+            accessibilityLabel={tab.label}
+            accessibilityRole="button"
             style={{
               alignItems: 'center',
               minWidth: 60,

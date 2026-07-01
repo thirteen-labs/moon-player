@@ -125,6 +125,8 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
     saveLibraryState();
   }, [saveLibraryState]);
 
+  const libraryService = serviceRef.current; // eslint-disable-line react-hooks/refs
+
   const value = useMemo(
     () => ({
       videos,
@@ -136,9 +138,9 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
       toggleFavorite,
       updateResumePosition,
       markPlayed,
-      libraryService: serviceRef.current,
+      libraryService,
     }),
-    [videos, isScanning, scanProgress, scan, addUris, getVideo, toggleFavorite, updateResumePosition, markPlayed],
+    [videos, isScanning, scanProgress, scan, addUris, getVideo, toggleFavorite, updateResumePosition, markPlayed, libraryService],
   );
 
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;

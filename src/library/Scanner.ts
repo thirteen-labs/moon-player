@@ -1,5 +1,5 @@
 import { Directory, File } from 'expo-file-system';
-import type { VideoFile, VideoExtension, ScanProgress, ScanCallback } from './types';
+import type { VideoFile, VideoExtension, ScanCallback } from './types';
 import { isVideoFile } from '../utils/fileExtensions';
 
 export class Scanner {
