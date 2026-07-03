@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { View, Text, Platform } from 'react-native';
 import { usePlayer } from '../player';
-import { useSettings } from '../storage';
+import { usePerVideoSubtitleSettings } from '../storage';
 import { getActiveCues } from './parser';
 import type { SubtitleTrack } from './parser';
 
@@ -11,35 +11,29 @@ interface SubtitleOverlayProps {
 }
 
 export function SubtitleOverlay({ track, currentTime }: SubtitleOverlayProps) {
-  const { settings } = useSettings();
   const { position } = usePlayer();
+  const { mergedSubtitleSettings: s } = usePerVideoSubtitleSettings();
 
   const time = currentTime ?? position;
 
   const activeCues = useMemo(() => {
     if (!track) return [];
-    return getActiveCues(track.cues, time + settings.subtitleOffset);
-  }, [track, time, settings.subtitleOffset]);
+    return getActiveCues(track.cues, time + s.subtitleOffset);
+  }, [track, time, s.subtitleOffset]);
 
   if (activeCues.length === 0) return null;
 
-  const positionStyle: { bottom?: number; top?: number | string; justifyContent?: string } = {};
-  if (settings.subtitlePosition === 'top') {
-    positionStyle.top = 100;
-  } else if (settings.subtitlePosition === 'middle') {
-    positionStyle.top = '45%';
-    positionStyle.justifyContent = 'center';
-  } else {
-    positionStyle.bottom = 80;
-  }
+  const subtitleTop = s.subtitlePosition === 'top' ? 100 : undefined;
+  const subtitleBottom = s.subtitlePosition !== 'top' ? 80 : undefined;
+  const subtitleJustify = s.subtitlePosition === 'middle' ? 'center' as const : undefined;
 
-  const textShadow = settings.subtitleShadow ? {
+  const textShadow = s.subtitleShadow ? {
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   } : {};
 
-  const outlineStyle = settings.subtitleOutline ? {
+  const outlineStyle = s.subtitleOutline ? {
     ...Platform.select({
       ios: {
         textShadowColor: '#000',
@@ -64,7 +58,9 @@ export function SubtitleOverlay({ track, currentTime }: SubtitleOverlayProps) {
         alignItems: 'center',
         zIndex: 20,
         paddingHorizontal: 24,
-        ...positionStyle,
+        top: subtitleTop,
+        bottom: subtitleBottom,
+        justifyContent: subtitleJustify,
       }}
       accessibilityRole="text"
       accessibilityLabel="Subtitle text"
@@ -73,17 +69,17 @@ export function SubtitleOverlay({ track, currentTime }: SubtitleOverlayProps) {
         <Text
           key={cue.id}
           style={{
-            color: settings.subtitleFontColor,
-            fontSize: settings.subtitleFontSize,
-            backgroundColor: settings.subtitleBackgroundColor,
-            fontFamily: settings.subtitleFontFamily,
+            color: s.subtitleFontColor,
+            fontSize: s.subtitleFontSize,
+            backgroundColor: s.subtitleBackgroundColor,
+            fontFamily: s.subtitleFontFamily,
             textAlign: 'center',
             paddingHorizontal: 12,
             paddingVertical: 4,
             borderRadius: 4,
             overflow: 'hidden',
             marginBottom: 4,
-            lineHeight: settings.subtitleFontSize * 1.4,
+            lineHeight: s.subtitleFontSize * 1.4,
             ...textShadow,
             ...outlineStyle,
           }}

@@ -2,14 +2,15 @@ import { useMemo } from 'react';
 import { View, Text, ScrollView, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { useTheme } from '../theme';
 import { useLibrary } from '../library';
-import { useNavigation } from '../navigation';
+import { useRouter } from 'expo-router';
 import { ContinueWatchingCard } from '../components/ContinueWatchingCard';
 import { MovieCard } from '../components/MovieCard';
 import { SectionHeader } from '../components/SectionHeader';
-import { BottomTabBar } from '../components/BottomTabBar';
 import { EmptyState } from '../components/EmptyState';
 import { formatDuration } from '../utils/format';
 import { groupVideosByFolder } from '../utils/folders';
+import { triggerHaptic } from '../utils/haptics';
+import { CardSkeleton } from '../components/SkeletonLoader';
 
 function getGreeting(): string { // eslint-disable-line @typescript-eslint/no-unused-vars
   const hour = new Date().getHours();
@@ -23,7 +24,7 @@ export function HomeScreen() {
   const { colors, theme } = useTheme();
   const { spacing, borderRadius, typography } = theme;
   const { videos, isScanning } = useLibrary();
-  const { navigate } = useNavigation();
+  const router = useRouter();
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -96,7 +97,7 @@ export function HomeScreen() {
             paddingBottom: spacing.sm,
           }}
         >
-          <Pressable hitSlop={8} accessibilityLabel="Menu" accessibilityRole="button">
+          <Pressable hitSlop={8} accessibilityLabel="Open menu" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 24 }}>☰</Text>
           </Pressable>
 
@@ -124,10 +125,7 @@ export function HomeScreen() {
           </View>
 
           <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <Pressable hitSlop={8} accessibilityLabel="Open menu" accessibilityRole="button">
-            <Text style={{ color: colors.text, fontSize: 24 }}>☰</Text>
-          </Pressable>
-            <Pressable hitSlop={8} onPress={() => navigate('search')}>
+            <Pressable hitSlop={8} onPress={() => router.push('/search')} accessibilityLabel="Search" accessibilityRole="button">
               <Text style={{ color: colors.text, fontSize: 22 }}>🔍</Text>
             </Pressable>
           </View>
@@ -148,6 +146,14 @@ export function HomeScreen() {
             <Text style={{ color: colors.textSecondary, fontSize: 18, marginLeft: spacing.xs }}>›</Text>
           </View>
 
+          {isScanning && !headerVideo && <CardSkeleton />}
+          {!isScanning && !headerVideo && (
+            <EmptyState
+              icon="🎬"
+              title="No videos yet"
+              message="Add videos to your library to start watching. Tap the Library tab to scan your device."
+            />
+          )}
           {headerVideo ? (
             (() => {
               const d = headerVideo.metadata?.duration ?? 0;
@@ -159,23 +165,17 @@ export function HomeScreen() {
                   progress={progress}
                   currentTime={formatDuration(headerVideo.resumePosition || 0)}
                   totalTime={formatDuration(d || 0)}
-                  onPlayPress={() => navigate('player', { video: headerVideo })}
-                  onPress={() => navigate('videoInfo', { video: headerVideo })}
+onPlayPress={() => router.push(`/player?id=${encodeURIComponent(headerVideo.id)}`)}
+                   onPress={() => router.push(`/video-info?id=${encodeURIComponent(headerVideo.id)}`)}
                 />
               );
             })()
-          ) : (
-            <EmptyState
-              icon="🎬"
-              title="No videos yet"
-              message="Add videos to your library to start watching. Tap the Library tab to scan your device."
-            />
-          )}
+          ) : null}
         </View>
 
         {/* Recently Added Section */}
         <View style={{ marginTop: spacing.md }}>
-          <SectionHeader title="Recently Added" onViewAllPress={() => navigate('library')} />
+          <SectionHeader title="Recently Added" onViewAllPress={() => router.push('/library')} />
           {recentlyAdded.length > 0 ? (
             <FlatList
               data={recentlyAdded}
@@ -188,8 +188,8 @@ export function HomeScreen() {
                   title={item.file.name.replace(/\.[^/.]+$/, '')}
                   year={new Date(item.file.modifiedAt).getFullYear()}
                   duration={formatDuration(item.metadata?.duration ?? 0)}
-                  onPress={() => navigate('videoInfo', { video: item })}
-                  onPlayPress={() => navigate('player', { video: item })}
+                  onPress={() => router.push(`/video-info?id=${encodeURIComponent(item.id)}`)}
+                  onPlayPress={() => router.push(`/player?id=${encodeURIComponent(item.id)}`)}
                 />
               )}
             />
@@ -198,7 +198,7 @@ export function HomeScreen() {
 
         {/* Collections / Categories Section */}
         <View style={{ marginTop: spacing.lg }}>
-          <SectionHeader title="Collections" onViewAllPress={() => navigate('folders')} />
+          <SectionHeader title="Collections" onViewAllPress={() => router.push('/folder')} />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -206,7 +206,9 @@ export function HomeScreen() {
           >
             {/* Category Cards matching Mockup */}
             <Pressable
-              onPress={() => navigate('library', { category: 'movies' })}
+              onPress={() => { triggerHaptic('light'); router.push('/library?category=movies'); }}
+              accessibilityLabel="Browse Movies category"
+              accessibilityRole="button"
               style={{
                 width: 140,
                 padding: spacing.md,
@@ -224,7 +226,9 @@ export function HomeScreen() {
             </Pressable>
 
             <Pressable
-              onPress={() => navigate('folders')}
+              onPress={() => { triggerHaptic('light'); router.push('/folder'); }}
+              accessibilityLabel="Browse folders"
+              accessibilityRole="button"
               style={{
                 width: 140,
                 padding: spacing.md,
@@ -244,8 +248,6 @@ export function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Tab Bar */}
-      <BottomTabBar activeTab="home" onTabPress={navigate} />
     </View>
   );
 }

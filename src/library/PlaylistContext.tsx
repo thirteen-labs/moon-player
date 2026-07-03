@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { StorageService } from '../storage/StorageService';
+import { PlaylistRepository } from '../database';
 import type { Playlist } from './types';
 
 export interface PlaylistContextValue {
@@ -40,7 +40,7 @@ export function PlaylistProvider({ children }: PlaylistProviderProps) {
   const loadPlaylists = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await StorageService.loadPlaylists();
+      const data = await PlaylistRepository.findAll();
       setPlaylists(data);
     } catch {
       // Handle loading error
@@ -63,68 +63,52 @@ export function PlaylistProvider({ children }: PlaylistProviderProps) {
       updatedAt: now,
     };
 
-    setPlaylists((prev) => {
-      const updated = [...prev, newPlaylist];
-      StorageService.savePlaylists(updated);
-      return updated;
-    });
-
+    await PlaylistRepository.insert(newPlaylist);
+    setPlaylists((prev) => [...prev, newPlaylist]);
     return newPlaylist;
   }, []);
 
   const deletePlaylist = useCallback(async (id: string): Promise<void> => {
-    setPlaylists((prev) => {
-      const updated = prev.filter((p) => p.id !== id);
-      StorageService.savePlaylists(updated);
-      return updated;
-    });
+    await PlaylistRepository.delete(id);
+    setPlaylists((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
   const addVideoToPlaylist = useCallback(async (playlistId: string, videoUri: string): Promise<void> => {
-    setPlaylists((prev) => {
-      const updated = prev.map((p) => {
-        if (p.id !== playlistId) return p;
-        if (p.videoIds.includes(videoUri)) return p;
-        return {
-          ...p,
-          videoIds: [...p.videoIds, videoUri],
-          updatedAt: Date.now(),
-        };
-      });
-      StorageService.savePlaylists(updated);
-      return updated;
-    });
-  }, []);
+    const playlist = playlists.find((p) => p.id === playlistId);
+    if (!playlist || playlist.videoIds.includes(videoUri)) return;
+
+    const updated: Playlist = {
+      ...playlist,
+      videoIds: [...playlist.videoIds, videoUri],
+      updatedAt: Date.now(),
+    };
+
+    await PlaylistRepository.update(playlistId, { videoIds: updated.videoIds });
+    setPlaylists((prev) => prev.map((p) => (p.id === playlistId ? updated : p)));
+  }, [playlists]);
 
   const removeVideoFromPlaylist = useCallback(async (playlistId: string, videoUri: string): Promise<void> => {
-    setPlaylists((prev) => {
-      const updated = prev.map((p) => {
-        if (p.id !== playlistId) return p;
-        return {
-          ...p,
-          videoIds: p.videoIds.filter((id) => id !== videoUri),
-          updatedAt: Date.now(),
-        };
-      });
-      StorageService.savePlaylists(updated);
-      return updated;
-    });
-  }, []);
+    const playlist = playlists.find((p) => p.id === playlistId);
+    if (!playlist) return;
+
+    const updated: Playlist = {
+      ...playlist,
+      videoIds: playlist.videoIds.filter((id) => id !== videoUri),
+      updatedAt: Date.now(),
+    };
+
+    await PlaylistRepository.update(playlistId, { videoIds: updated.videoIds });
+    setPlaylists((prev) => prev.map((p) => (p.id === playlistId ? updated : p)));
+  }, [playlists]);
 
   const renamePlaylist = useCallback(async (playlistId: string, newName: string): Promise<void> => {
-    setPlaylists((prev) => {
-      const updated = prev.map((p) => {
-        if (p.id !== playlistId) return p;
-        return {
-          ...p,
-          name: newName.trim(),
-          updatedAt: Date.now(),
-        };
-      });
-      StorageService.savePlaylists(updated);
-      return updated;
-    });
-  }, []);
+    const playlist = playlists.find((p) => p.id === playlistId);
+    if (!playlist) return;
+
+    const updated: Playlist = { ...playlist, name: newName.trim(), updatedAt: Date.now() };
+    await PlaylistRepository.update(playlistId, { name: updated.name });
+    setPlaylists((prev) => prev.map((p) => (p.id === playlistId ? updated : p)));
+  }, [playlists]);
 
   const value = useMemo(
     () => ({

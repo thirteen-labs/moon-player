@@ -2,11 +2,11 @@ import { useState, useMemo, useCallback } from 'react';
 import { View, Text, TextInput, ScrollView, Pressable, FlatList } from 'react-native';
 import { useTheme } from '../theme';
 import { useLibrary } from '../library';
-import { useNavigation } from '../navigation';
+import { useRouter } from 'expo-router';
 import { useSettings } from '../storage';
 import { EmptyState } from '../components/EmptyState';
-import { BottomTabBar } from '../components/BottomTabBar';
 import { formatDuration } from '../utils/format';
+import { triggerHaptic } from '../utils/haptics';
 
 type SearchFilter = 'all' | 'movies' | 'tvshows' | 'anime' | 'folders';
 
@@ -14,7 +14,7 @@ export function SearchScreen() {
   const { colors, theme } = useTheme();
   const { spacing, borderRadius, typography } = theme;
   const { videos } = useLibrary();
-  const { navigate } = useNavigation();
+  const router = useRouter();
 
   const { settings, updateSettings } = useSettings();
 
@@ -85,7 +85,7 @@ export function SearchScreen() {
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <Pressable onPress={() => navigate('home')} hitSlop={8}>
+          <Pressable onPress={() => { triggerHaptic('light'); router.push('/'); }} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 24 }}>←</Text>
           </Pressable>
           <Text
@@ -118,6 +118,8 @@ export function SearchScreen() {
             onChangeText={(v) => { setQuery(v); setShowRecent(true); }}
             onSubmitEditing={() => handleSearch(query)}
             returnKeyType="search"
+            accessibilityLabel="Search videos"
+            accessibilityRole="search"
             style={{
               flex: 1,
               color: colors.text,
@@ -164,7 +166,10 @@ export function SearchScreen() {
               return (
                 <Pressable
                   key={chip.id}
-                  onPress={() => setFilter(chip.id)}
+                  onPress={() => { triggerHaptic('light'); setFilter(chip.id); }}
+                  accessibilityLabel={`Filter by ${chip.label}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
                   style={{
                     paddingHorizontal: spacing.md,
                     paddingVertical: 6,
@@ -222,7 +227,7 @@ export function SearchScreen() {
         contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xl }}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => item.video ? navigate('videoInfo', { video: item.video }) : undefined}
+            onPress={() => item.video ? router.push(`/video-info?id=${encodeURIComponent(item.video.id)}`) : undefined}
             style={({ pressed }) => [
               {
                 flexDirection: 'row',
@@ -274,8 +279,6 @@ export function SearchScreen() {
         )}
       />
 
-      {/* Bottom Tab Bar */}
-      <BottomTabBar activeTab="search" onTabPress={navigate} />
     </View>
   );
 }

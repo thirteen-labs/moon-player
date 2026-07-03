@@ -1,5 +1,5 @@
-export { StorageService } from './StorageService';
 export { SettingsProvider, useSettings } from './SettingsContext';
 export { MmkvService, mmkvStorage } from './MmkvService';
-export type { LibraryData, SettingsData } from './StorageService';
+export { usePerVideoSubtitleSettings } from './usePerVideoSubtitleSettings';
 export type { SettingsContextValue } from './SettingsContext';
+export type { SettingsData } from './SettingsContext';

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { AccentId, ThemeColors, ThemeContextValue, ThemeId } from './types';
 import { accentColors } from './accent';
 import { themes, defaultThemeId } from './themes';
+import { useSettings } from '../storage';
 
 function applyAccent(colors: ThemeColors, accentId: AccentId | null): ThemeColors {
   if (!accentId) return colors;
@@ -33,17 +34,30 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children, initialThemeId, initialAccentId = null }: ThemeProviderProps) {
-  const [themeId, setThemeId] = useState<ThemeId>(initialThemeId ?? defaultThemeId);
-  const [accentId, setAccentId] = useState<AccentId | null>(initialAccentId);
+  const { settings, updateSettings } = useSettings();
+  const [themeId, setThemeId] = useState<ThemeId>((settings.theme as ThemeId) || (initialThemeId ?? defaultThemeId));
+  const [accentId, setAccentId] = useState<AccentId | null>(initialAccentId ?? (settings.accent as AccentId | null));
+
+  const savedTheme = settings.theme as ThemeId;
+  if (savedTheme && savedTheme !== themeId && themes[savedTheme]) {
+    setThemeId(savedTheme);
+  }
+  const savedAccent = settings.accent as AccentId | null;
+  if (savedAccent !== accentId) {
+    setAccentId(savedAccent);
+  }
+
   const theme = themes[themeId];
 
   const setTheme = useCallback((id: ThemeId) => {
     setThemeId(id);
-  }, []);
+    updateSettings({ theme: id });
+  }, [updateSettings]);
 
   const setAccent = useCallback((id: AccentId | null) => {
     setAccentId(id);
-  }, []);
+    updateSettings({ accent: id });
+  }, [updateSettings]);
 
   const colors = useMemo(() => applyAccent(theme.colors, accentId), [theme, accentId]);
   const accent = accentId ? accentColors[accentId] : null;

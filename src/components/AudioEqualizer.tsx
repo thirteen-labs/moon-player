@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useTheme } from '../theme';
 import { useSettings } from '../storage';
@@ -13,6 +13,11 @@ const PRESETS: Record<string, number[]> = {
   Jazz: [4, 3, 2, 1, 1, 2, 3, 4, 5, 4],
   Voice: [3, 2, 1, 0, 0, 1, 2, 3, 4, 3],
   Bass: [8, 6, 4, 2, 0, 0, 1, 2, 3, 4],
+  Electronic: [7, 5, 3, 1, 0, 0, 3, 5, 6, 7],
+  'Hip Hop': [7, 5, 3, 1, 0, 0, 2, 5, 6, 5],
+  Acoustic: [4, 3, 2, 1, 0, 0, 1, 2, 3, 4],
+  Latin: [4, 3, 1, 0, 1, 2, 3, 4, 5, 4],
+  RnB: [4, 3, 2, 0, 1, 2, 3, 4, 5, 4],
 };
 
 interface AudioEqualizerProps {
@@ -53,7 +58,15 @@ export function AudioEqualizer({ onClose }: AudioEqualizerProps) {
   const { colors, theme } = useTheme();
   const { spacing, borderRadius, typography } = theme;
   const { settings, updateSettings } = useSettings();
-  const [selectedPreset, setSelectedPreset] = useState<string>('Normal');
+  const eq = settings.audioEqualizer || PRESETS.Normal;
+
+  const matchingPreset = useMemo(() => {
+    return Object.entries(PRESETS).find(([, vals]) =>
+      vals.length === eq.length && vals.every((v, i) => v === eq[i])
+    )?.[0] || '';
+  }, [eq]);
+
+  const [selectedPreset, setSelectedPreset] = useState<string>(matchingPreset);
 
   const applyPreset = (name: string) => {
     setSelectedPreset(name);
@@ -61,7 +74,7 @@ export function AudioEqualizer({ onClose }: AudioEqualizerProps) {
   };
 
   const adjustBand = (index: number, delta: number) => {
-    const newEq = [...(settings.audioEqualizer || PRESETS.Normal)];
+    const newEq = [...eq];
     newEq[index] = Math.max(-20, Math.min(20, (newEq[index] || 0) + delta));
     updateSettings({ audioEqualizer: newEq });
     setSelectedPreset('');
@@ -88,7 +101,7 @@ export function AudioEqualizer({ onClose }: AudioEqualizerProps) {
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 200 }}>
-        {(settings.audioEqualizer || PRESETS.Normal).map((val, i) => (
+        {eq.map((val, i) => (
           <View key={i} style={{ flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
             <SliderBar value={val} min={-20} max={20} onChange={(v) => adjustBand(i, v - val)} height={200} />
             <Text style={{ color: colors.textTertiary, fontSize: 7, marginTop: 2 }}>{EQ_BANDS[i]}</Text>

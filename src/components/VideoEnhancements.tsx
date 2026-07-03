@@ -84,12 +84,13 @@ export function VideoEnhancements({
         { label: 'Contrast', key: 'contrast' as const, val: settings.contrast, min: 0, max: 2, step: 0.05 },
         { label: 'Saturation', key: 'saturation' as const, val: settings.saturation, min: 0, max: 2, step: 0.05 },
         { label: 'Gamma', key: 'gamma' as const, val: settings.gamma, min: 0.5, max: 2, step: 0.05 },
+        { label: 'Temp', key: 'temperature' as const, val: settings.temperature, min: -1, max: 1, step: 0.05 },
       ].map((item) => (
         <View key={item.label} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
           <Text style={{ color: colors.text, fontSize: typography.sizes.sm, width: 80 }}>{item.label}</Text>
           <View style={{ flex: 1, height: 32, justifyContent: 'center', marginHorizontal: spacing.sm }}>
             <View style={{ height: 4, backgroundColor: colors.surfaceVariant, borderRadius: 2 }}>
-              <View style={{ width: `${((item.val - item.min) / (item.max - item.min)) * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+              <View style={{ width: `${((item.val - item.min) / (item.max - item.min)) * 100}%`, height: '100%', backgroundColor: item.key === 'temperature' ? (item.val > 0 ? '#FF9434' : item.val < 0 ? '#3494FF' : colors.primary) : colors.primary, borderRadius: 2 }} />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
               <Pressable onPress={() => updateSettings({ [item.key]: Math.max(item.min, Math.round((item.val - item.step) * 100) / 100) })} style={{ paddingHorizontal: 4 }}>
@@ -103,6 +104,19 @@ export function VideoEnhancements({
           </View>
         </View>
       ))}
+
+      <Pressable
+        onPress={() => updateSettings({ brightness: 1, contrast: 1, saturation: 1, gamma: 1, temperature: 0 })}
+        style={{
+          marginTop: spacing.md,
+          paddingVertical: spacing.sm,
+          alignItems: 'center',
+          borderRadius: borderRadius.md,
+          backgroundColor: colors.surfaceVariant,
+        }}
+      >
+        <Text style={{ color: colors.text, fontSize: typography.sizes.sm }}>Reset All Filters</Text>
+      </Pressable>
     </View>
   );
 }

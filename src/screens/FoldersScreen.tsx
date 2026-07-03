@@ -2,15 +2,17 @@ import { useMemo } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
 import { useTheme } from '../theme';
 import { useLibrary } from '../library';
-import { useNavigation } from '../navigation';
+import { useRouter } from 'expo-router';
 import { EmptyState } from '../components/EmptyState';
 import { groupVideosByFolder } from '../utils/folders';
+import { triggerHaptic } from '../utils/haptics';
+
 
 export function FoldersScreen() {
   const { colors, theme } = useTheme();
   const { spacing, borderRadius, typography } = theme;
   const { videos } = useLibrary();
-  const { navigate } = useNavigation();
+  const router = useRouter();
 
   const folders = useMemo(() => {
     return groupVideosByFolder(videos);
@@ -38,7 +40,7 @@ export function FoldersScreen() {
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <Pressable onPress={() => navigate('home')} hitSlop={8}>
+          <Pressable onPress={() => { triggerHaptic('light'); router.push('/'); }} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 24 }}>←</Text>
           </Pressable>
           <Text
@@ -53,16 +55,15 @@ export function FoldersScreen() {
         </View>
 
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <Pressable hitSlop={8}>
+          <Pressable hitSlop={8} accessibilityLabel="Add folder" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 20 }}>⊞</Text>
           </Pressable>
-          <Pressable hitSlop={8} onPress={() => navigate('search')}>
+          <Pressable hitSlop={8} onPress={() => router.push('/search')} accessibilityLabel="Search" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 20 }}>🔍</Text>
           </Pressable>
         </View>
       </View>
 
-      {/* Folders List */}
       {foldersToShow.length === 0 && (
         <EmptyState
           icon="📁"
@@ -76,7 +77,9 @@ export function FoldersScreen() {
         contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xl }}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => navigate('folderView', { folder: item })}
+            onPress={() => { triggerHaptic('light'); router.push(`/folder/view?path=${encodeURIComponent(item.path)}`); }}
+            accessibilityLabel={`Open folder ${item.name}, ${item.count} videos`}
+            accessibilityRole="button"
             style={({ pressed }) => [
               {
                 flexDirection: 'row',
@@ -136,7 +139,7 @@ export function FoldersScreen() {
             </View>
 
             {/* Menu dots */}
-            <Pressable hitSlop={8} style={{ padding: spacing.xs }}>
+            <Pressable hitSlop={8} style={{ padding: spacing.xs }} accessibilityLabel="Folder options" accessibilityRole="button">
               <Text style={{ color: colors.textSecondary, fontSize: 18 }}>⋮</Text>
             </Pressable>
           </Pressable>

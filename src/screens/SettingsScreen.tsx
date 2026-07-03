@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, Switch, TextInput } from 'react-native';
 import { useTheme } from '../theme';
-import { useNavigation } from '../navigation';
+import { useRouter } from 'expo-router';
 import { useSettings } from '../storage';
-import type { SettingsData } from '../storage/StorageService';
-import { BottomTabBar } from '../components/BottomTabBar';
+import type { SettingsData } from '../storage';
 import type { ThemeId, AccentId } from '../theme/types';
 
 type SettingsPage = 'menu' | 'appearance' | 'playback' | 'gestures' | 'subtitles' | 'audio' | 'storage' | 'about';
@@ -32,7 +31,7 @@ const EQ_BANDS = ['60Hz', '170Hz', '310Hz', '600Hz', '1kHz', '3kHz', '6kHz', '12
 export function SettingsScreen() {
   const { colors, theme } = useTheme();
   const { spacing, borderRadius, typography } = theme;
-  const { navigate } = useNavigation();
+  const router = useRouter();
   const { settings, updateSettings } = useSettings();
   const { setTheme, themeId, setAccent, accentId } = useTheme();
   const [page, setPage] = useState<SettingsPage>('menu');
@@ -41,7 +40,7 @@ export function SettingsScreen() {
     <>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingTop: spacing.xl, paddingBottom: spacing.sm }}>
         <Text style={{ color: colors.text, fontSize: typography.sizes.xl, fontWeight: typography.weights.bold }}>Settings</Text>
-        <Pressable hitSlop={8} onPress={() => navigate('search')}>
+        <Pressable hitSlop={8} onPress={() => router.push('/search')}>
           <Text style={{ color: colors.text, fontSize: 22 }}>🔍</Text>
         </Pressable>
       </View>
@@ -65,6 +64,33 @@ export function SettingsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.text, fontSize: typography.sizes.md, fontWeight: typography.weights.semibold }}>{item.title}</Text>
                 <Text style={{ color: colors.textTertiary, fontSize: typography.sizes.xs, marginTop: 2 }}>{item.subtitle}</Text>
+              </View>
+              <Text style={{ color: colors.textTertiary, fontSize: 16 }}>›</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.xs, fontWeight: typography.weights.semibold, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, textTransform: 'uppercase', letterSpacing: 1 }}>Coming Soon</Text>
+        <View style={{ paddingHorizontal: spacing.md }}>
+          {[
+            { screen: 'networkStreaming' as const, title: 'Network Streaming', subtitle: 'SMB/NAS, HTTP Server', icon: '🌐' },
+            { screen: 'backupRestore' as const, title: 'Backup & Restore', subtitle: 'Library + Settings', icon: '💾' },
+            { screen: 'pluginSystem' as const, title: 'Plugin System', subtitle: 'Extend Aura', icon: '🧩' },
+            { screen: 'aiOrganization' as const, title: 'AI Organization', subtitle: 'On-device ML', icon: '🤖' },
+            { screen: 'layouts' as const, title: 'Responsive Layouts', subtitle: 'Desktop, TV, Tablet', icon: '📱' },
+            { screen: 'chromecast' as const, title: 'Chromecast', subtitle: 'Cast to devices', icon: '📡' },
+            { screen: 'crossSync' as const, title: 'Cross-Device Sync', subtitle: 'Seamless sync', icon: '🔄' },
+          ].map((item, index, arr) => (
+            <Pressable key={item.screen} onPress={() => router.push(`/extras/${item.screen}`)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: index < arr.length - 1 ? 1 : 0, borderBottomColor: colors.border }}>
+              <View style={{ width: 44, height: 44, borderRadius: borderRadius.md, backgroundColor: colors.surfaceVariant, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md }}>
+                <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontSize: typography.sizes.md, fontWeight: typography.weights.semibold }}>{item.title}</Text>
+                <Text style={{ color: colors.textTertiary, fontSize: typography.sizes.xs, marginTop: 2 }}>{item.subtitle}</Text>
+              </View>
+              <View style={{ backgroundColor: colors.primaryContainer, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.full, marginRight: spacing.sm }}>
+                <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '600' }}>v2.0</Text>
               </View>
               <Text style={{ color: colors.textTertiary, fontSize: 16 }}>›</Text>
             </Pressable>
@@ -290,92 +316,152 @@ export function SettingsScreen() {
     </ScrollView>
   );
 
-  const renderStorage = () => {
-    const [cacheSize, setCacheSize] = useState('Calculating...'); // eslint-disable-line react-hooks/rules-of-hooks
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {page === 'menu' && renderMenu()}
+      {page === 'appearance' && renderAppearance()}
+      {page === 'playback' && renderPlayback()}
+      {page === 'gestures' && renderGestures()}
+      {page === 'subtitles' && renderSubtitles()}
+      {page === 'audio' && renderAudio()}
+      {page === 'storage' && <StorageSettings onBack={() => setPage('menu')} />}
+      {page === 'about' && <AboutSettings onBack={() => setPage('menu')} />}
+    </View>
+  );
+}
 
-    useEffect(() => { // eslint-disable-line react-hooks/rules-of-hooks
-      async function calcCache() {
-        try {
-          const { cacheDirectory } = require('expo-file-system'); // eslint-disable-line @typescript-eslint/no-require-imports
-          const dir = new (require('expo-file-system').Directory)(cacheDirectory); // eslint-disable-line @typescript-eslint/no-require-imports
-          if (dir.exists) {
-            const entries = dir.list();
-            let total = 0;
-            for (const entry of entries) {
-              if (entry instanceof require('expo-file-system').File) { // eslint-disable-line @typescript-eslint/no-require-imports
-                total += entry.size || 0;
-              }
+function StorageSettings({ onBack }: { onBack: () => void }) {
+  const { colors, theme } = useTheme();
+  const { spacing, borderRadius, typography } = theme;
+  const { settings, updateSettings } = useSettings();
+  const [cacheSize, setCacheSize] = useState('Calculating...');
+  const [newDir, setNewDir] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { cacheDirectory, Directory, File } = await import('expo-file-system');
+        const dir = new Directory(cacheDirectory);
+        if (dir.exists) {
+          const entries = dir.list();
+          let total = 0;
+          for (const entry of entries) {
+            if (entry instanceof File) {
+              total += entry.size || 0;
             }
-            setCacheSize(total > 0 ? `${(total / (1024 * 1024)).toFixed(1)} MB` : '0 MB');
-          } else {
-            setCacheSize('0 MB');
           }
-        } catch {
-          setCacheSize('—');
+          if (!cancelled) setCacheSize(total > 0 ? `${(total / (1024 * 1024)).toFixed(1)} MB` : '0 MB');
+        } else {
+          if (!cancelled) setCacheSize('0 MB');
+        }
+      } catch {
+        if (!cancelled) setCacheSize('—');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleClearCache = async () => {
+    try {
+      const { cacheDirectory, Directory } = await import('expo-file-system');
+      const dir = new Directory(cacheDirectory);
+      if (dir.exists) {
+        for (const entry of dir.list()) {
+          try { entry.delete?.(); } catch {}
         }
       }
-      calcCache();
-    }, []);
+      setCacheSize('0 MB');
+    } catch {}
+  };
 
-    const handleClearCache = async () => {
-      try {
-        const { cacheDirectory } = require('expo-file-system'); // eslint-disable-line @typescript-eslint/no-require-imports
-        const dir = new (require('expo-file-system').Directory)(cacheDirectory); // eslint-disable-line @typescript-eslint/no-require-imports
-        if (dir.exists) {
-          for (const entry of dir.list()) {
-            try { entry.delete?.(); } catch {}
-          }
-        }
-        setCacheSize('0 MB');
-      } catch {}
-    };
+  const handleAddDirectory = () => {
+    const trimmed = newDir.trim();
+    if (!trimmed) return;
+    if (settings.scanDirectories.includes(trimmed)) return;
+    updateSettings({ scanDirectories: [...settings.scanDirectories, trimmed] });
+    setNewDir('');
+  };
 
-    return (
+  const handleRemoveDirectory = (dir: string) => {
+    updateSettings({ scanDirectories: settings.scanDirectories.filter((d) => d !== dir) });
+  };
+
+  return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing['2xl'] }}>
-      <Pressable onPress={() => setPage('menu')} style={{ marginBottom: spacing.lg }}>
+      <Pressable onPress={onBack} style={{ marginBottom: spacing.lg }}>
         <Text style={{ color: colors.primary, fontSize: typography.sizes.md }}>‹ Back</Text>
       </Pressable>
       <Text style={{ color: colors.text, fontSize: typography.sizes.xl, fontWeight: typography.weights.bold, marginBottom: spacing.lg }}>Storage & Data</Text>
 
+      <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, marginBottom: spacing.sm, textTransform: 'uppercase' }}>Scan Directories</Text>
+      {settings.scanDirectories.length === 0 ? (
+        <View style={{ backgroundColor: colors.surfaceVariant, borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.md }}>
+          <Text style={{ color: colors.textTertiary, fontSize: typography.sizes.sm }}>No scan directories added. Add a folder path below to start scanning.</Text>
+        </View>
+      ) : (
+        settings.scanDirectories.map((dir, idx) => (
+          <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <Text style={{ color: colors.text, fontSize: typography.sizes.sm, flex: 1 }} numberOfLines={1}>{dir}</Text>
+            <Pressable onPress={() => handleRemoveDirectory(dir)} hitSlop={8} style={{ padding: spacing.xs }}>
+              <Text style={{ color: colors.error, fontSize: 14 }}>✕</Text>
+            </Pressable>
+          </View>
+        ))
+      )}
+      <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.xl }}>
+        <TextInput
+          value={newDir}
+          onChangeText={setNewDir}
+          placeholder="/storage/emulated/0/Movies"
+          placeholderTextColor={colors.textTertiary}
+          style={{ flex: 1, backgroundColor: colors.surfaceVariant, color: colors.text, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.md }}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <Pressable onPress={handleAddDirectory} style={{ backgroundColor: colors.primary, paddingHorizontal: spacing.md, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: colors.background, fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold }}>Add</Text>
+        </Pressable>
+      </View>
+
       <View style={{ backgroundColor: colors.surfaceVariant, borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.md }}>
         <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.sm }}>Cache Size</Text>
         <Text style={{ color: colors.text, fontSize: typography.sizes.xl, fontWeight: typography.weights.bold }}>{cacheSize}</Text>
-      </View>
-      <View style={{ backgroundColor: colors.surfaceVariant, borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.md }}>
-        <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.sm }}>Library Data</Text>
-        <Text style={{ color: colors.text, fontSize: typography.sizes.xl, fontWeight: typography.weights.bold }}>{settings.scanDirectories.length} folders</Text>
       </View>
 
       <Pressable onPress={handleClearCache} style={{ backgroundColor: colors.errorContainer, borderRadius: borderRadius.lg, padding: spacing.md, alignItems: 'center', marginTop: spacing.md }}>
         <Text style={{ color: colors.error, fontSize: typography.sizes.md, fontWeight: typography.weights.semibold }}>Clear Cache</Text>
       </Pressable>
       <Pressable onPress={async () => {
-        const { StorageService } = require('../storage/StorageService'); // eslint-disable-line @typescript-eslint/no-require-imports
-        await StorageService.clearAll();
+        const { SettingsRepository, closeDatabase } = await import('../database');
+        await SettingsRepository.clearAll();
+        await closeDatabase();
       }} style={{ backgroundColor: colors.errorContainer, borderRadius: borderRadius.lg, padding: spacing.md, alignItems: 'center', marginTop: spacing.sm }}>
         <Text style={{ color: colors.error, fontSize: typography.sizes.md, fontWeight: typography.weights.semibold }}>Clear All Data</Text>
       </Pressable>
     </ScrollView>
-    );
-  };
+  );
+}
 
-  const renderAbout = () => {
-    const [showLicenses, setShowLicenses] = useState(false); // eslint-disable-line react-hooks/rules-of-hooks
+function AboutSettings({ onBack }: { onBack: () => void }) {
+  const { colors, theme } = useTheme();
+  const { spacing, typography } = theme;
+  const [showLicenses, setShowLicenses] = useState(false);
 
-    const licenses = [
-      { name: 'React Native', license: 'MIT', url: 'https://github.com/facebook/react-native/blob/main/LICENSE' },
-      { name: 'Expo', license: 'MIT', url: 'https://github.com/expo/expo/blob/main/LICENSE' },
-      { name: 'react-native-video', license: 'MIT', url: 'https://github.com/react-native-video/react-native-video/blob/main/LICENSE' },
-      { name: 'NativeWind', license: 'MIT', url: 'https://github.com/nativewind/nativewind/blob/main/LICENSE' },
-      { name: 'react-native-reanimated', license: 'MIT', url: 'https://github.com/software-mansion/react-native-reanimated/blob/main/LICENSE' },
-      { name: 'react-native-mmkv', license: 'MIT', url: 'https://github.com/mrousavy/react-native-mmkv/blob/main/LICENSE' },
-      { name: '@gorhom/bottom-sheet', license: 'MIT', url: 'https://github.com/gorhom/bottom-sheet/blob/master/LICENSE' },
-      { name: '@shopify/flash-list', license: 'MIT', url: 'https://github.com/Shopify/flash-list/blob/main/LICENSE' },
-    ];
+  const licenses = [
+    { name: 'React Native', license: 'MIT', url: 'https://github.com/facebook/react-native/blob/main/LICENSE' },
+    { name: 'Expo', license: 'MIT', url: 'https://github.com/expo/expo/blob/main/LICENSE' },
+    { name: 'react-native-video', license: 'MIT', url: 'https://github.com/react-native-video/react-native-video/blob/main/LICENSE' },
+    { name: 'NativeWind', license: 'MIT', url: 'https://github.com/nativewind/nativewind/blob/main/LICENSE' },
+    { name: 'react-native-reanimated', license: 'MIT', url: 'https://github.com/software-mansion/react-native-reanimated/blob/main/LICENSE' },
+    { name: 'react-native-mmkv', license: 'MIT', url: 'https://github.com/mrousavy/react-native-mmkv/blob/main/LICENSE' },
+    { name: '@gorhom/bottom-sheet', license: 'MIT', url: 'https://github.com/gorhom/bottom-sheet/blob/master/LICENSE' },
+    { name: '@shopify/flash-list', license: 'MIT', url: 'https://github.com/Shopify/flash-list/blob/main/LICENSE' },
+  ];
 
-    return (
+  return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing['2xl'] }}>
-      <Pressable onPress={() => setPage('menu')} style={{ marginBottom: spacing.lg }}>
+      <Pressable onPress={onBack} style={{ marginBottom: spacing.lg }}>
         <Text style={{ color: colors.primary, fontSize: typography.sizes.md }}>‹ Back</Text>
       </Pressable>
       <View style={{ alignItems: 'center', marginBottom: spacing['2xl'], marginTop: spacing.xl }}>
@@ -410,20 +496,5 @@ export function SettingsScreen() {
         </View>
       ))}
     </ScrollView>
-    );
-  };
-
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {page === 'menu' && renderMenu()}
-      {page === 'appearance' && renderAppearance()}
-      {page === 'playback' && renderPlayback()}
-      {page === 'gestures' && renderGestures()}
-      {page === 'subtitles' && renderSubtitles()}
-      {page === 'audio' && renderAudio()}
-      {page === 'storage' && renderStorage()}
-      {page === 'about' && renderAbout()}
-      {page === 'menu' && <BottomTabBar activeTab="settings" onTabPress={navigate} />}
-    </View>
   );
 }

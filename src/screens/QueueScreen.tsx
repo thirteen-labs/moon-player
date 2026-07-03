@@ -1,22 +1,23 @@
 import { View, Text, Pressable, StyleSheet, FlatList } from 'react-native';
 import { useTheme } from '../theme';
 import { usePlayer } from '../player';
-import { useNavigation } from '../navigation';
+import { useRouter } from 'expo-router';
 import { EmptyState } from '../components/EmptyState';
 import { formatDuration } from '../utils/format';
+import { triggerHaptic } from '../utils/haptics';
 
 export function QueueScreen() {
   const { colors, theme } = useTheme();
   const { spacing, borderRadius, typography } = theme;
-  const { navigate } = useNavigation();
-  const { queue, currentVideo, position, duration, removeFromQueue } = usePlayer();
+  const router = useRouter();
+  const { queue, currentVideo, position, duration, removeFromQueue, moveQueueItem } = usePlayer();
 
   const progress = duration > 0 ? position / duration : 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
       <View style={{ position: 'absolute', top: spacing.xl, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, zIndex: 10 }}>
-        <Pressable onPress={() => navigate('player')} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable onPress={() => { triggerHaptic('light'); router.push('/player'); }} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }} accessibilityLabel="Go back to player" accessibilityRole="button">
           <Text style={{ color: '#fff', fontSize: 20 }}>‹</Text>
         </Pressable>
         <View style={{ flex: 1, alignItems: 'center', marginHorizontal: spacing.md }}>
@@ -25,7 +26,7 @@ export function QueueScreen() {
           </Text>
         </View>
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <Pressable style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }} accessibilityLabel="Queue options" accessibilityRole="button">
             <Text style={{ color: '#fff', fontSize: 18 }}>⋮</Text>
           </Pressable>
         </View>
@@ -86,9 +87,21 @@ export function QueueScreen() {
                     </Text>
                     <Text style={{ color: colors.textTertiary, fontSize: 10 }}>{formatDuration(item.metadata?.duration || 0)}</Text>
                   </View>
-                  <Pressable onPress={() => removeFromQueue(item.id)} hitSlop={8} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surfaceVariant, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: colors.text, fontSize: 14 }}>✕</Text>
-                  </Pressable>
+                  <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+                    {index > 0 && (
+                      <Pressable onPress={() => { triggerHaptic('light'); moveQueueItem(item.id, 'up'); }} hitSlop={8} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surfaceVariant, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel="Move up in queue" accessibilityRole="button">
+                        <Text style={{ color: colors.text, fontSize: 14 }}>↑</Text>
+                      </Pressable>
+                    )}
+                    {index < queue.length - 1 && (
+                      <Pressable onPress={() => { triggerHaptic('light'); moveQueueItem(item.id, 'down'); }} hitSlop={8} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surfaceVariant, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel="Move down in queue" accessibilityRole="button">
+                        <Text style={{ color: colors.text, fontSize: 14 }}>↓</Text>
+                      </Pressable>
+                    )}
+                    <Pressable onPress={() => { triggerHaptic('light'); removeFromQueue(item.id); }} hitSlop={8} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surfaceVariant, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel="Remove from queue" accessibilityRole="button">
+                      <Text style={{ color: colors.text, fontSize: 14 }}>✕</Text>
+                    </Pressable>
+                  </View>
                 </View>
               );
             }}

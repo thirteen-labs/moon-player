@@ -1,7 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LibraryService } from './LibraryService';
-import { StorageService } from '../storage/StorageService';
+import { runMigrations, VideoRepository } from '../database';
 import type { LibraryVideo, ScanProgress, ScanResult } from './types';
 
 export interface LibraryContextValue {
@@ -11,9 +11,9 @@ export interface LibraryContextValue {
   scan: (rootUris: string[]) => Promise<ScanResult>;
   addUris: (uris: string[]) => Promise<LibraryVideo[]>;
   getVideo: (uri: string) => LibraryVideo | undefined;
-  toggleFavorite: (uri: string) => void;
-  updateResumePosition: (uri: string, position: number) => void;
-  markPlayed: (uri: string) => void;
+  toggleFavorite: (uri: string) => Promise<void>;
+  updateResumePosition: (uri: string, position: number) => Promise<void>;
+  markPlayed: (uri: string) => Promise<void>;
   libraryService: LibraryService;
 }
 
@@ -24,9 +24,9 @@ export const LibraryContext = createContext<LibraryContextValue>({
   scan: async () => ({ added: [], updated: [], removed: [], totalDuration: 0, scanDuration: 0 }),
   addUris: async () => [],
   getVideo: () => undefined,
-  toggleFavorite: () => {},
-  updateResumePosition: () => {},
-  markPlayed: () => {},
+  toggleFavorite: async () => {},
+  updateResumePosition: async () => {},
+  markPlayed: async () => {},
   libraryService: new LibraryService(),
 });
 
@@ -40,20 +40,14 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
 
-  const saveLibraryState = useCallback(async () => {
-    const allVideos = serviceRef.current.getAllVideos();
-    const videosMap = new Map<string, LibraryVideo>(allVideos.map((v) => [v.id, v]));
-    const scannedUris = serviceRef.current.getScannedUris();
-    await StorageService.saveLibrary(videosMap, scannedUris);
-  }, []);
-
   useEffect(() => {
     async function loadLibrary() {
-      const data = await StorageService.loadLibrary();
-      if (data) {
-        serviceRef.current.initialize(data.videos, data.scannedUris);
-        setVideos(serviceRef.current.getAllVideos());
+      await runMigrations();
+      const dbVideos = await VideoRepository.findAll();
+      if (dbVideos.length > 0) {
+        serviceRef.current.loadFromVideos(dbVideos);
       }
+      setVideos(serviceRef.current.getAllVideos());
     }
     loadLibrary();
   }, []);
@@ -68,36 +62,45 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
       });
 
       setVideos(serviceRef.current.getAllVideos());
-      await saveLibraryState();
+
+      for (const video of result.added) {
+        await VideoRepository.insert(video);
+      }
+      for (const uri of result.removed) {
+        await VideoRepository.delete(uri);
+      }
+
       return result;
     } finally {
       setIsScanning(false);
       setScanProgress(null);
     }
-  }, [saveLibraryState]);
+  }, []);
 
   const addUris = useCallback(async (uris: string[]): Promise<LibraryVideo[]> => {
     const added = await serviceRef.current.fetchAdditionalUris(uris);
     setVideos(serviceRef.current.getAllVideos());
-    await saveLibraryState();
+    for (const video of added) {
+      await VideoRepository.insert(video);
+    }
     return added;
-  }, [saveLibraryState]);
+  }, []);
 
   const getVideo = useCallback((uri: string): LibraryVideo | undefined => {
     return serviceRef.current.getVideo(uri);
   }, []);
 
-  const toggleFavorite = useCallback((uri: string) => {
+  const toggleFavorite = useCallback(async (uri: string) => {
     const video = serviceRef.current.getVideo(uri);
     if (!video) return;
 
     const updated: LibraryVideo = { ...video, isFavorite: !video.isFavorite };
     serviceRef.current.updateVideo(uri, updated);
     setVideos(serviceRef.current.getAllVideos());
-    saveLibraryState();
-  }, [saveLibraryState]);
+    await VideoRepository.toggleFavorite(uri);
+  }, []);
 
-  const updateResumePosition = useCallback((uri: string, position: number) => {
+  const updateResumePosition = useCallback(async (uri: string, position: number) => {
     const video = serviceRef.current.getVideo(uri);
     if (!video) return;
 
@@ -108,10 +111,10 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
     };
     serviceRef.current.updateVideo(uri, updated);
     setVideos(serviceRef.current.getAllVideos());
-    saveLibraryState();
-  }, [saveLibraryState]);
+    await VideoRepository.updateResumePosition(uri, position);
+  }, []);
 
-  const markPlayed = useCallback((uri: string) => {
+  const markPlayed = useCallback(async (uri: string) => {
     const video = serviceRef.current.getVideo(uri);
     if (!video) return;
 
@@ -122,8 +125,8 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
     };
     serviceRef.current.updateVideo(uri, updated);
     setVideos(serviceRef.current.getAllVideos());
-    saveLibraryState();
-  }, [saveLibraryState]);
+    await VideoRepository.markPlayed(uri);
+  }, []);
 
   const libraryService = serviceRef.current; // eslint-disable-line react-hooks/refs
 

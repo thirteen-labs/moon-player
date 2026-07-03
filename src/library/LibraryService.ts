@@ -30,6 +30,11 @@ export class LibraryService {
     this.scannedUris = new Set(scannedUris);
   }
 
+  loadFromVideos(videos: LibraryVideo[]): void {
+    this.videos = new Map(videos.map((v) => [v.id, v]));
+    this.scannedUris = new Set(videos.map((v) => v.file.uri));
+  }
+
   async fetchFirst(rootUris: string[], onProgress?: ScanCallback): Promise<ScanResult> {
     if (this.scanInProgress) {
       throw new Error('Scan already in progress');

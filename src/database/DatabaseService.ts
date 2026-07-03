@@ -1,6 +1,11 @@
 import * as SQLite from 'expo-sqlite';
 import { SCHEMA_VERSION, CREATE_TABLES } from './schema';
 
+const SETTINGS_TABLE = `CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+)`;
+
 let db: SQLite.SQLiteDatabase | null = null;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
@@ -46,6 +51,8 @@ async function applyMigration(database: SQLite.SQLiteDatabase, version: number):
     for (const stmt of CREATE_TABLES) {
       await database.execAsync(stmt);
     }
+  } else if (version === 2) {
+    await database.execAsync(SETTINGS_TABLE);
   }
 
   await database.runAsync(

@@ -1,18 +1,17 @@
 import { useMemo } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useTheme } from '../theme';
-import { useNavigation } from '../navigation';
-import { usePlayer } from '../player';
+import { useRouter } from 'expo-router';
+import { useLibrary } from '../library';
 import { formatDuration } from '../utils/format';
-import type { LibraryVideo } from '../library/types';
+import { triggerHaptic } from '../utils/haptics';
 
-export function VideoInfoScreen() {
+export function VideoInfoScreen({ routeUri }: { routeUri?: string }) {
   const { colors, theme } = useTheme();
   const { spacing, borderRadius, typography } = theme;
-  const { navigate, params } = useNavigation();
-  const { playVideo } = usePlayer(); // eslint-disable-line @typescript-eslint/no-unused-vars
-
-  const video = params?.video as LibraryVideo | undefined;
+  const router = useRouter();
+  const { getVideo } = useLibrary();
+  const video = routeUri ? getVideo(routeUri) : undefined;
   const videoTitle = video ? video.file.name.replace(/\.[^/.]+$/, '') : 'Unknown';
   const videoYear = video ? new Date(video.file.modifiedAt).getFullYear() : 0;
   const metadata = video?.metadata;
@@ -32,14 +31,14 @@ export function VideoInfoScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <Pressable onPress={() => navigate('player')} hitSlop={8}>
+          <Pressable onPress={() => { triggerHaptic('light'); router.push('/player'); }} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 24 }}>←</Text>
           </Pressable>
           <Text style={{ color: colors.text, fontSize: typography.sizes.lg, fontWeight: typography.weights.semibold }} numberOfLines={1}>
             {videoTitle}
           </Text>
         </View>
-        <Pressable hitSlop={8}>
+        <Pressable hitSlop={8} accessibilityLabel="Video settings" accessibilityRole="button">
           <Text style={{ color: colors.text, fontSize: 22 }}>⚙</Text>
         </Pressable>
       </View>
@@ -73,8 +72,10 @@ export function VideoInfoScreen() {
               <Text style={{ color: colors.text, fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, marginBottom: spacing.sm }}>Actions</Text>
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <Pressable
-                  onPress={() => navigate('player', { video })}
+                  onPress={() => { triggerHaptic('medium'); router.push(`/player?id=${encodeURIComponent(video.id)}`); }}
                   style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: spacing.sm, borderRadius: borderRadius.full, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.xs }}
+                  accessibilityLabel="Play video"
+                  accessibilityRole="button"
                 >
                   <Text style={{ color: colors.background, fontSize: 14 }}>▶</Text>
                   <Text style={{ color: colors.background, fontSize: typography.sizes.md, fontWeight: typography.weights.semibold }}>Play</Text>
@@ -130,11 +131,11 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActionButton({ icon, label }: { icon: string; label: string }) {
+function ActionButton({ icon, label, onPress }: { icon: string; label: string; onPress?: () => void }) {
   const { colors, theme } = useTheme();
   const { spacing } = theme;
   return (
-    <Pressable style={{ alignItems: 'center', gap: spacing.xs }} hitSlop={8}>
+    <Pressable onPress={onPress} style={{ alignItems: 'center', gap: spacing.xs }} hitSlop={8} accessibilityLabel={label} accessibilityRole="button">
       <Text style={{ fontSize: 24, color: colors.text }}>{icon}</Text>
       <Text style={{ color: colors.textSecondary, fontSize: 10 }}>{label}</Text>
     </Pressable>

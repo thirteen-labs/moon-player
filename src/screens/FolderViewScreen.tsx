@@ -1,20 +1,28 @@
 import { useMemo, useState } from 'react';
 import { View, Text, FlatList, Pressable, useWindowDimensions } from 'react-native';
 import { useTheme } from '../theme';
-import { useNavigation } from '../navigation';
+import { useRouter } from 'expo-router';
+import { useLibrary } from '../library';
 import { MovieCard } from '../components/MovieCard';
 import { EmptyState } from '../components/EmptyState';
 import { formatDuration } from '../utils/format';
+import { triggerHaptic } from '../utils/haptics';
+import { GridSkeleton } from '../components/SkeletonLoader';
 import type { LibraryVideo } from '../library/types';
-import type { FolderGroup } from '../utils/folders';
+import { groupVideosByFolder } from '../utils/folders';
 
-export function FolderViewScreen() {
+export function FolderViewScreen({ routeFolderPath }: { routeFolderPath?: string }) {
   const { colors, theme } = useTheme();
   const { spacing, borderRadius, typography } = theme;
-  const { navigate, params } = useNavigation();
+  const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
-
-  const folder = params?.folder as FolderGroup | undefined;
+  const { videos } = useLibrary();
+  const folders = useMemo(() => groupVideosByFolder(videos), [videos]);
+  const loading = folders.length === 0 && videos.length > 0;
+  const folder = useMemo(() => {
+    if (routeFolderPath) return folders.find(f => f.path === routeFolderPath);
+    return folders[0];
+  }, [routeFolderPath, folders]);
   const folderName = folder ? folder.name : 'Movies';
 
   const [sortMode, setSortMode] = useState<'name' | 'date'>('name');
@@ -53,7 +61,7 @@ export function FolderViewScreen() {
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <Pressable onPress={() => navigate('folders')} hitSlop={8}>
+          <Pressable onPress={() => { triggerHaptic('light'); router.push('/folder'); }} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 24 }}>←</Text>
           </Pressable>
           <Text
@@ -68,13 +76,13 @@ export function FolderViewScreen() {
         </View>
 
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <Pressable hitSlop={8}>
+          <Pressable hitSlop={8} accessibilityLabel="Add to folder" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 20 }}>⊞</Text>
           </Pressable>
-          <Pressable hitSlop={8} onPress={() => navigate('search')}>
+          <Pressable hitSlop={8} onPress={() => router.push('/search')} accessibilityLabel="Search" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 20 }}>🔍</Text>
           </Pressable>
-          <Pressable hitSlop={8}>
+          <Pressable hitSlop={8} accessibilityLabel="More options" accessibilityRole="button">
             <Text style={{ color: colors.text, fontSize: 20 }}>⋮</Text>
           </Pressable>
         </View>
@@ -91,7 +99,9 @@ export function FolderViewScreen() {
         }}
       >
         <Pressable
-          onPress={() => setSortMode(sortMode === 'name' ? 'date' : 'name')}
+          onPress={() => { triggerHaptic('light'); setSortMode(sortMode === 'name' ? 'date' : 'name'); }}
+          accessibilityLabel={`Sort by ${sortMode === 'name' ? 'date' : 'name'}`}
+          accessibilityRole="button"
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -122,8 +132,8 @@ export function FolderViewScreen() {
         </Pressable>
       </View>
 
-      {/* Videos Grid */}
-      {videosToShow.length === 0 && (
+      {loading && <GridSkeleton columns={3} count={6} />}
+      {!loading && videosToShow.length === 0 && (
         <EmptyState
           icon="🎬"
           title="This folder is empty"
@@ -149,8 +159,8 @@ export function FolderViewScreen() {
               title={item.title}
               year={item.year || 2024}
               duration={item.duration}
-              onPress={() => item.video ? navigate('videoInfo', { video: item.video }) : {}}
-              onPlayPress={() => item.video ? navigate('player', { video: item.video }) : {}}
+              onPress={() => item.video ? router.push(`/video-info?id=${encodeURIComponent(item.video.id)}`) : {}}
+              onPlayPress={() => item.video ? router.push(`/player?id=${encodeURIComponent(item.video.id)}`) : {}}
             />
           </View>
         )}

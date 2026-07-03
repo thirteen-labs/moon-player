@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const CREATE_TABLES = [
   `CREATE TABLE IF NOT EXISTS schema_version (
@@ -60,4 +60,8 @@ export const CREATE_TABLES = [
   `CREATE INDEX IF NOT EXISTS idx_videos_is_favorite ON videos(is_favorite)`,
   `CREATE INDEX IF NOT EXISTS idx_subtitles_video_uri ON subtitles(video_uri)`,
   `CREATE INDEX IF NOT EXISTS idx_playlist_videos_playlist_id ON playlist_videos(playlist_id)`,
+  `CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`,
 ];

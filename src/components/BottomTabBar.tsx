@@ -1,31 +1,20 @@
 import { View, Text, Pressable } from 'react-native';
+import { useRouter, usePathname } from 'expo-router';
 import { useTheme } from '../theme';
-import type { Screen } from '../navigation';
 
-interface TabItem {
-  icon: string;
-  label: string;
-  screen: Screen;
-  isActive?: boolean;
-  onPress?: () => void;
-}
+const TAB_ROUTES = [
+  { icon: '🏠', label: 'Home', route: '/' },
+  { icon: '📚', label: 'Library', route: '/library' },
+  { icon: '▶', label: 'Player', route: '/player' },
+  { icon: '🔍', label: 'Search', route: '/search' },
+  { icon: '⚙', label: 'Settings', route: '/settings' },
+] as const;
 
-interface BottomTabBarProps {
-  activeTab: Screen;
-  onTabPress: (screen: Screen) => void;
-}
-
-export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
+export function BottomTabBar() {
   const { colors, theme } = useTheme();
   const { spacing, typography } = theme;
-
-  const tabs: TabItem[] = [
-    { icon: '🏠', label: 'Home', screen: 'home', isActive: activeTab === 'home' },
-    { icon: '📚', label: 'Library', screen: 'library', isActive: activeTab === 'library' },
-    { icon: '▶', label: 'Player', screen: 'player', isActive: activeTab === 'player' },
-    { icon: '🔍', label: 'Search', screen: 'search', isActive: activeTab === 'search' },
-    { icon: '⚙', label: 'Settings', screen: 'settings', isActive: activeTab === 'settings' },
-  ];
+  const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <View
@@ -41,15 +30,15 @@ export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
         paddingHorizontal: spacing.sm,
       }}
     >
-      {tabs.map((tab, index) => {
+      {TAB_ROUTES.map((tab, index) => {
         const isCenter = index === 2;
-        const isActive = tab.isActive;
+        const isActive = pathname === tab.route || (tab.route !== '/' && pathname.startsWith(tab.route));
 
         if (isCenter) {
           return (
             <Pressable
               key={tab.label}
-              onPress={() => onTabPress(tab.screen)}
+              onPress={() => router.push(tab.route)}
               accessibilityLabel={tab.label}
               accessibilityRole="button"
               style={{
@@ -75,7 +64,7 @@ export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
         return (
           <Pressable
             key={tab.label}
-            onPress={() => onTabPress(tab.screen)}
+            onPress={() => router.push(tab.route)}
             accessibilityLabel={tab.label}
             accessibilityRole="button"
             style={{

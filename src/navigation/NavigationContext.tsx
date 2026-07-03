@@ -11,7 +11,14 @@ export type Screen =
   | 'folders'
   | 'folderView'
   | 'videoInfo'
-  | 'queue';
+  | 'queue'
+  | 'networkStreaming'
+  | 'backupRestore'
+  | 'pluginSystem'
+  | 'aiOrganization'
+  | 'layouts'
+  | 'chromecast'
+  | 'crossSync';
 
 type NavParams = Record<string, unknown> | null;
 

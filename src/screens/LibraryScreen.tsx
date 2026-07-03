@@ -1,12 +1,14 @@
 import { useState, useMemo, useCallback } from 'react';
-import { View, Text, FlatList, Pressable, useWindowDimensions, Modal, TextInput, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, useWindowDimensions, Modal, TextInput, RefreshControl, ActivityIndicator } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '../theme';
 import { useLibrary, usePlaylists } from '../library';
-import { useNavigation } from '../navigation';
+import { useRouter } from 'expo-router';
 import { useSettings } from '../storage';
 import { MovieCard } from '../components/MovieCard';
-import { BottomTabBar } from '../components/BottomTabBar';
 import { formatDuration } from '../utils/format';
+import { triggerHaptic } from '../utils/haptics';
+import { GridSkeleton } from '../components/SkeletonLoader';
 
 type Category = 'all' | 'movies' | 'tvshows' | 'anime' | 'others' | 'favorites';
 type SortMode = 'name' | 'date' | 'duration';
@@ -28,7 +30,7 @@ export function LibraryScreen() {
   const { videos, toggleFavorite, isScanning, scan } = useLibrary();
   const { playlists } = usePlaylists();
   const { settings } = useSettings();
-  const { navigate } = useNavigation();
+  const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -114,7 +116,7 @@ export function LibraryScreen() {
   const renderItem = (item: LibraryVideo) => (
     <View style={{ width: cardWidth }}>
       <Pressable
-        onPress={() => batchMode ? toggleSelect(item.id) : navigate('videoInfo', { video: item })}
+        onPress={() => batchMode ? toggleSelect(item.id) : router.push(`/video-info?id=${encodeURIComponent(item.id)}`)}
         onLongPress={() => {
           if (!batchMode) { setBatchMode(true); setSelectedIds(new Set([item.id])); }
         }}
@@ -135,9 +137,9 @@ export function LibraryScreen() {
           year={new Date(item.file.modifiedAt).getFullYear()}
           duration={formatDuration(item.metadata?.duration ?? 0)}
           onPress={() => {
-            if (!batchMode) navigate('videoInfo', { video: item });
+            if (!batchMode) router.push(`/video-info?id=${encodeURIComponent(item.id)}`);
           }}
-          onPlayPress={() => !batchMode && navigate('player', { video: item })}
+          onPlayPress={() => !batchMode && router.push(`/player?id=${encodeURIComponent(item.id)}`)}
           onMenuPress={() => handleContextMenu(item)}
         />
       </Pressable>
@@ -166,7 +168,7 @@ export function LibraryScreen() {
       {playlists.map((pl) => (
         <Pressable
           key={pl.id}
-          onPress={() => navigate('playlist', { playlistId: pl.id })}
+          onPress={() => router.push(`/playlist/${pl.id}`)}
           style={{
             width: (screenWidth - spacing.md * 2 - spacing.md) / 2,
             padding: spacing.lg,
@@ -189,13 +191,13 @@ export function LibraryScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
           <Text style={{ color: colors.text, fontSize: typography.sizes.xl, fontWeight: typography.weights.bold }}>Library</Text>
           <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <Pressable hitSlop={8} onPress={() => setViewMode(viewMode === 'grid' ? 'collections' : 'grid')}>
+            <Pressable hitSlop={8} onPress={() => { triggerHaptic('light'); setViewMode(viewMode === 'grid' ? 'collections' : 'grid'); }} accessibilityLabel={viewMode === 'grid' ? 'Switch to collections view' : 'Switch to grid view'} accessibilityRole="button">
               <Text style={{ color: colors.text, fontSize: 20 }}>{viewMode === 'grid' ? '⊞' : '⊟'}</Text>
             </Pressable>
-            <Pressable hitSlop={8} onPress={() => navigate('search')}>
+            <Pressable hitSlop={8} onPress={() => router.push('/search')} accessibilityLabel="Search" accessibilityRole="button">
               <Text style={{ color: colors.text, fontSize: 20 }}>🔍</Text>
             </Pressable>
-            <Pressable hitSlop={8}><Text style={{ color: colors.text, fontSize: 20 }}>⋮</Text></Pressable>
+            <Pressable hitSlop={8} accessibilityLabel="More options" accessibilityRole="button"><Text style={{ color: colors.text, fontSize: 20 }}>⋮</Text></Pressable>
           </View>
         </View>
 
@@ -207,7 +209,10 @@ export function LibraryScreen() {
                 return (
                   <Pressable
                     key={cat.id}
-                    onPress={() => setSelectedCategory(cat.id)}
+                    onPress={() => { triggerHaptic('light'); setSelectedCategory(cat.id); }}
+                    accessibilityLabel={`Filter by ${cat.label}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                     style={{
                       paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
                       borderRadius: borderRadius.full,
@@ -225,7 +230,7 @@ export function LibraryScreen() {
             </View>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
-              <Pressable onPress={toggleSort} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceVariant, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: borderRadius.sm }}>
+              <Pressable onPress={() => { triggerHaptic('light'); toggleSort(); }} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceVariant, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: borderRadius.sm }} accessibilityLabel={`Sorted by ${sortMode === 'date' ? 'Date' : sortMode === 'name' ? 'Name' : 'Length'}. Tap to change`} accessibilityRole="button">
                 <Text style={{ color: colors.text, fontSize: 11, marginRight: 4 }}>
                   {sortMode === 'date' ? 'Date' : sortMode === 'name' ? 'Name' : 'Length'}
                 </Text>
@@ -234,15 +239,15 @@ export function LibraryScreen() {
 
               {batchMode ? (
                 <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                  <Pressable onPress={() => setShowPlaylistModal(true)} style={{ backgroundColor: colors.primary, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: borderRadius.sm }}>
+                  <Pressable onPress={() => setShowPlaylistModal(true)} style={{ backgroundColor: colors.primary, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: borderRadius.sm }} accessibilityLabel="Add selected to playlist" accessibilityRole="button">
                     <Text style={{ color: colors.background, fontSize: 11, fontWeight: '600' }}>Add to</Text>
                   </Pressable>
-                  <Pressable onPress={() => { setBatchMode(false); setSelectedIds(new Set()); }} style={{ backgroundColor: colors.surfaceVariant, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: borderRadius.sm }}>
+                  <Pressable onPress={() => { setBatchMode(false); setSelectedIds(new Set()); }} style={{ backgroundColor: colors.surfaceVariant, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: borderRadius.sm }} accessibilityLabel="Cancel batch selection" accessibilityRole="button">
                     <Text style={{ color: colors.text, fontSize: 11 }}>Cancel</Text>
                   </Pressable>
                 </View>
               ) : (
-                <Pressable onPress={() => setShowFilterSheet(!showFilterSheet)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceVariant, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: borderRadius.sm }}>
+                <Pressable onPress={() => setShowFilterSheet(!showFilterSheet)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceVariant, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: borderRadius.sm }} accessibilityLabel="Filter options" accessibilityRole="button">
                   <Text style={{ color: colors.textSecondary, fontSize: 12, marginRight: 4 }}>Filter</Text>
                   <Text style={{ color: colors.text, fontSize: 11 }}>⛃</Text>
                 </Pressable>
@@ -259,14 +264,15 @@ export function LibraryScreen() {
         </View>
       )}
 
-      {viewMode === 'collections' ? renderCollectionsView() : (
+      {isScanning && filteredVideos.length === 0 ? (
+        <GridSkeleton columns={3} count={9} />
+      ) : viewMode === 'collections' ? renderCollectionsView() : (
         filteredVideos.length > 0 ? (
-          <FlatList
+          <FlashList
             data={filteredVideos}
             keyExtractor={(item) => item.id}
             numColumns={gridColumns}
             contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xl }}
-            columnWrapperStyle={{ justifyContent: 'flex-start', gap: spacing.sm, marginBottom: spacing.md }}
             renderItem={({ item }) => renderItem(item)}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
@@ -294,10 +300,10 @@ export function LibraryScreen() {
               {contextMenuVideo?.file?.name?.replace(/\.[^/.]+$/, '') || ''}
             </Text>
             {[
-              { icon: '▶', label: 'Play', action: () => { navigate('player', { video: contextMenuVideo }); setContextMenuVideo(null); } },
+              { icon: '▶', label: 'Play', action: () => { router.push(`/player?id=${encodeURIComponent(contextMenuVideo?.id || '')}`); setContextMenuVideo(null); } },
               { icon: '⭐', label: contextMenuVideo?.isFavorite ? 'Remove from Favorites' : 'Add to Favorites', action: () => { if (contextMenuVideo) toggleFavorite(contextMenuVideo.file?.uri || contextMenuVideo.id); setContextMenuVideo(null); } },
               { icon: '📋', label: 'Add to Playlist', action: () => { setContextMenuVideo(contextMenuVideo); setShowPlaylistModal(true); } },
-              { icon: '📄', label: 'Video Info', action: () => { navigate('videoInfo', { video: contextMenuVideo }); setContextMenuVideo(null); } },
+              { icon: '📄', label: 'Video Info', action: () => { router.push(`/video-info?id=${encodeURIComponent(contextMenuVideo?.id || '')}`); setContextMenuVideo(null); } },
             ].map((item) => (
               <Pressable key={item.label} onPress={() => item.action()} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
                 <Text style={{ fontSize: 18, marginRight: spacing.md }}>{item.icon}</Text>
@@ -379,7 +385,6 @@ export function LibraryScreen() {
         </View>
       </Modal>
 
-      <BottomTabBar activeTab="library" onTabPress={navigate} />
     </View>
   );
 }

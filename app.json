@@ -1,11 +1,12 @@
 {
   "expo": {
     "name": "Aura",
-    "slug": "Aura",
-    "version": "1.0.0",
+    "slug": "aura-player",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "scheme": "aura",
     "plugins": [
       "expo-font",
       "expo-sharing",
@@ -13,30 +14,37 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#000000",
+          "backgroundColor": "#0A0A0F",
           "image": "./assets/splash.png",
           "resizeMode": "contain",
           "imageWidth": 200
         }
-      ]
+      ],
+      "expo-router"
     ],
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.aura.player",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
+      "package": "com.aura.player",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/icon.png",
-        "backgroundImage": "./assets/icon.png",
-        "monochromeImage": "./assets/icon.png"
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "appName": "Aura",
+      "appVersion": "2.0.0"
     }
   }
 }
