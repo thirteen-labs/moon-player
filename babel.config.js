@@ -1,11 +1,39 @@
+// module.exports = function (api) {
+//   api.cache(true)
+//   return {
+//     presets: [
+//       ["babel-preset-expo", { jsxImportSource: "nativewind" }],
+//       "nativewind/babel",
+//     ],
+//     plugins: [
+//       [
+//         "module-resolver",
+//         {
+//           root: ["."],
+//           alias: {
+//             "@": "./src",
+//           },
+//         },
+//       ],
+//     ],
+//   }
+// }
+
+
 module.exports = function (api) {
-  api.cache(true)
+  api.cache(true);
+
   return {
     presets: [
-      ["babel-preset-expo", { jsxImportSource: "nativewind" }],
-      "nativewind/babel",
+      [
+        "babel-preset-expo",
+        {
+          jsxImportSource: "nativewind",
+        },
+      ],
     ],
     plugins: [
+      "nativewind/babel",
       [
         "module-resolver",
         {
@@ -13,8 +41,17 @@ module.exports = function (api) {
           alias: {
             "@": "./src",
           },
+          extensions: [
+            ".ios.js",
+            ".android.js",
+            ".js",
+            ".jsx",
+            ".ts",
+            ".tsx",
+            ".json",
+          ],
         },
       ],
     ],
-  }
-}
+  };
+};
