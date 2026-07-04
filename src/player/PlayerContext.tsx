@@ -213,7 +213,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
 
   const clearQueue = useCallback(() => {
     playbackServiceRef.current.clearQueue();
-    (videoRef.current as Record<string, unknown>)?.stop?.();
+    (videoRef.current as { stop?: () => void })?.stop?.();
   }, []);
 
   const onProgress = useCallback((progress: { currentTime: number }) => {

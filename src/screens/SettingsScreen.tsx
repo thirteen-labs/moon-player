@@ -341,8 +341,8 @@ function StorageSettings({ onBack }: { onBack: () => void }) {
     let cancelled = false;
     (async () => {
       try {
-        const { cacheDirectory, Directory, File } = await import('expo-file-system');
-        const dir = new Directory(cacheDirectory);
+        const { Paths, File } = await import('expo-file-system');
+        const dir = Paths.cache;
         if (dir.exists) {
           const entries = dir.list();
           let total = 0;
@@ -364,8 +364,8 @@ function StorageSettings({ onBack }: { onBack: () => void }) {
 
   const handleClearCache = async () => {
     try {
-      const { cacheDirectory, Directory } = await import('expo-file-system');
-      const dir = new Directory(cacheDirectory);
+      const { Paths } = await import('expo-file-system');
+      const dir = Paths.cache;
       if (dir.exists) {
         for (const entry of dir.list()) {
           try { entry.delete?.(); } catch {}

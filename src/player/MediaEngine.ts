@@ -2,79 +2,75 @@ import type { MediaEngineInterface } from './types';
 
 export type { MediaEngineInterface } from './types';
 
+interface VideoRefMethods {
+  resume?: () => void;
+  pause?: () => void;
+  stop?: () => void;
+  seek?: (seconds: number) => void;
+  setRate?: (rate: number) => void;
+  setVolume?: (volume: number) => void;
+  setMuted?: (muted: boolean) => void;
+  setSelectedAudioTrack?: (track: { type: string; value: number }) => void;
+  setSelectedTextTrack?: (track: { type: string; value: number } | { type: 'disabled' }) => void;
+  presentFullscreenPlayer?: () => void;
+  dismissFullscreenPlayer?: () => void;
+}
+
 export function createMediaEngine(videoRef: React.RefObject<unknown>): MediaEngineInterface {
   return {
-    load(src) {
-      source = src;
+    load(_src: { uri: string; isNetwork?: boolean }) {
     },
 
     play() {
-      const ref = getRef(videoRef);
-      if (ref?.resume) ref.resume();
+      getRef(videoRef)?.resume?.();
     },
 
     pause() {
-      const ref = getRef(videoRef);
-      if (ref?.pause) ref.pause();
+      getRef(videoRef)?.pause?.();
     },
 
     stop() {
-      const ref = getRef(videoRef);
-      if (ref?.stop) ref.stop();
+      getRef(videoRef)?.stop?.();
     },
 
     seek(seconds: number) {
-      const ref = getRef(videoRef);
-      if (ref?.seek) ref.seek(seconds);
+      getRef(videoRef)?.seek?.(seconds);
     },
 
     setRate(rate: number) {
-      const ref = getRef(videoRef);
-      if (ref?.setRate) ref.setRate(rate);
+      getRef(videoRef)?.setRate?.(rate);
     },
 
     setVolume(volume: number) {
-      const ref = getRef(videoRef);
-      if (ref?.setVolume) ref.setVolume(volume);
+      getRef(videoRef)?.setVolume?.(volume);
     },
 
     setMuted(muted: boolean) {
-      const ref = getRef(videoRef);
-      if (ref?.setMuted) ref.setMuted(muted);
+      getRef(videoRef)?.setMuted?.(muted);
     },
 
     setSelectedAudioTrack(index: number) {
-      const ref = getRef(videoRef);
-      if (ref?.setSelectedAudioTrack) {
-        ref.setSelectedAudioTrack({ type: 'index', value: index } as never);
-      }
+      getRef(videoRef)?.setSelectedAudioTrack?.({ type: 'index', value: index });
     },
 
     setSelectedTextTrack(index: number) {
-      const ref = getRef(videoRef);
-      if (ref?.setSelectedTextTrack) {
-        ref.setSelectedTextTrack(index >= 0 ? { type: 'index', value: index } : { type: 'disabled' } as never);
-      }
+      getRef(videoRef)?.setSelectedTextTrack?.(index >= 0 ? { type: 'index', value: index } : { type: 'disabled' });
     },
 
     presentFullscreen() {
-      const ref = getRef(videoRef);
-      if (ref?.presentFullscreenPlayer) ref.presentFullscreenPlayer();
+      getRef(videoRef)?.presentFullscreenPlayer?.();
     },
 
     dismissFullscreen() {
-      const ref = getRef(videoRef);
-      if (ref?.dismissFullscreenPlayer) ref.dismissFullscreenPlayer();
+      getRef(videoRef)?.dismissFullscreenPlayer?.();
     },
 
     enterPiP() {
-      const ref = getRef(videoRef);
-      if (ref?.presentFullscreenPlayer) ref.presentFullscreenPlayer();
+      getRef(videoRef)?.presentFullscreenPlayer?.();
     },
 
     exitPiP() {
-      const ref = getRef(videoRef);
-      if (ref?.dismissFullscreenPlayer) ref.dismissFullscreenPlayer();
+      getRef(videoRef)?.dismissFullscreenPlayer?.();
     },
 
     isPiPAvailable() {
@@ -90,8 +86,8 @@ export function createMediaEngine(videoRef: React.RefObject<unknown>): MediaEngi
   };
 }
 
-function getRef(videoRef: React.RefObject<unknown>): Record<string, unknown> | null {
+function getRef(videoRef: React.RefObject<unknown>): VideoRefMethods | null {
   const ref = videoRef.current;
-  if (ref && typeof ref === 'object') return ref as Record<string, unknown>;
+  if (ref && typeof ref === 'object') return ref as VideoRefMethods;
   return null;
 }
