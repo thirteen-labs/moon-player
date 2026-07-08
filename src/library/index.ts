@@ -15,6 +15,7 @@ export type {
   ScanResult,
   ScanCallback,
   VideoExtension,
+  AudioExtension,
   SubtitleExtension,
   Playlist,
   Bookmark,

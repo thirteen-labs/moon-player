@@ -35,11 +35,13 @@ export function NetworkStreamingScreen() {
   const [selectedItem, setSelectedItem] = useState<IAItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const activeCategoryQuery = CATEGORIES.find((c) => c.id === activeCategory)?.query || '';
 
   const fetchItems = useCallback(async (query: string, pg: number = 1, append: boolean = false) => {
     setLoading(true);
+    setError(null);
     try {
       const result = await InternetArchiveService.search(query, pg);
       if (append) {
@@ -49,8 +51,9 @@ export function NetworkStreamingScreen() {
       }
       setTotal(result.total);
       setPage(pg);
-    } catch {
-      // handle error
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch items');
+      if (!append) setItems([]);
     } finally {
       setLoading(false);
     }
@@ -60,6 +63,7 @@ export function NetworkStreamingScreen() {
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setError(null);
       try {
         const result = await InternetArchiveService.search(activeCategoryQuery, 1);
         if (!cancelled) {
@@ -67,7 +71,11 @@ export function NetworkStreamingScreen() {
           setTotal(result.total);
           setPage(1);
         }
-      } catch {
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : 'Failed to load category');
+          setItems([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -98,7 +106,7 @@ export function NetworkStreamingScreen() {
       const details = await InternetArchiveService.getDetails(item.identifier);
       setVideoUrl(details.videoUrl);
     } catch {
-      // handle error
+      setVideoUrl(null);
     } finally {
       setDetailLoading(false);
     }
@@ -258,6 +266,13 @@ export function NetworkStreamingScreen() {
           )}
         />
       </View>
+
+      {/* Error */}
+      {error && (
+        <View style={{ padding: spacing.md, marginHorizontal: spacing.md, marginTop: spacing.sm, backgroundColor: colors.errorContainer || '#330000', borderRadius: borderRadius.md }}>
+          <Text style={{ color: colors.error || '#ff4444', fontSize: typography.sizes.xs }}>{error}</Text>
+        </View>
+      )}
 
       {/* Content */}
       {loading && items.length === 0 ? (

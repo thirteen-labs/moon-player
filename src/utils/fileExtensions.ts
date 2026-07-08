@@ -1,4 +1,5 @@
-import type { VideoExtension, SubtitleExtension } from '../library/types';
+import type { VideoExtension, SubtitleExtension, AudioExtension } from '../library/types';
+import type { AudioExtension as AudioExt } from '../audio/types';
 
 export const VIDEO_EXTENSIONS: VideoExtension[] = [
   '.mp4', '.mkv', '.avi', '.mov', '.wmv',
@@ -10,8 +11,15 @@ export const SUBTITLE_EXTENSIONS: SubtitleExtension[] = [
   '.srt', '.ass', '.ssa', '.vtt', '.sub', '.idx', '.pgs',
 ];
 
+export const AUDIO_EXTENSIONS: AudioExt[] = [
+  '.mp3', '.flac', '.wav', '.aac', '.ogg',
+  '.m4a', '.wma', '.opus', '.alac', '.aiff',
+  '.dsf', '.ape',
+];
+
 const videoExtSet = new Set(VIDEO_EXTENSIONS);
 const subtitleExtSet = new Set(SUBTITLE_EXTENSIONS);
+const audioExtSet = new Set(AUDIO_EXTENSIONS);
 
 export function isVideoFile(filename: string): boolean {
   const ext = getExtension(filename);
@@ -21,6 +29,11 @@ export function isVideoFile(filename: string): boolean {
 export function isSubtitleFile(filename: string): boolean {
   const ext = getExtension(filename);
   return subtitleExtSet.has(ext as SubtitleExtension);
+}
+
+export function isAudioFile(filename: string): boolean {
+  const ext = getExtension(filename);
+  return audioExtSet.has(ext as AudioExtension);
 }
 
 export function getExtension(filename: string): string {

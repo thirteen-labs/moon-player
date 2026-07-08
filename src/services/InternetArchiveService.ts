@@ -1,4 +1,5 @@
 const BASE = 'https://archive.org';
+const TIMEOUT_MS = 15000;
 
 export interface IAItem {
   identifier: string;
@@ -24,36 +25,24 @@ export interface IAFile {
   width: number;
 }
 
+interface IASearchDoc {
+  identifier: string;
+  title?: string;
+  description?: string;
+  creator?: string;
+  date?: string;
+  downloads?: number;
+  avg_rating?: number;
+  subject?: string | string[];
+  mediatype?: string;
+  year?: number;
+}
+
 interface IASearchResponse {
   response: {
     numFound: number;
-    docs: Array<{
-      identifier: string;
-      title?: string;
-      description?: string;
-      creator?: string;
-      date?: string;
-      downloads?: number;
-      avg_rating?: number;
-      subject?: string[];
-      mediatype?: string;
-      year?: number;
-    }>;
+    docs: IASearchDoc[];
   };
-}
-
-interface IAMetadataResponse {
-  metadata: Record<string, unknown>;
-  files: Array<{
-    name: string;
-    source: string;
-    format: string;
-    size?: number;
-    length?: number;
-    height?: number;
-    width?: number;
-    [key: string]: unknown;
-  }>;
 }
 
 export const CATEGORIES = [
@@ -63,9 +52,46 @@ export const CATEGORIES = [
   { id: 'documentaries', label: 'Docs', query: 'subject:documentary AND mediatype:movies' },
 ] as const;
 
+async function fetchWithTimeout(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) {
+      throw new Error(`Archive.org returned ${res.status}: ${res.statusText}`);
+    }
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function parseSubject(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw as string[];
+  if (typeof raw === 'string') return raw.split(';').map((s) => s.trim()).filter(Boolean);
+  return [];
+}
+
+function toIAItem(d: IASearchDoc): IAItem {
+  const yearNum = d.year || (d.date ? parseInt(d.date.slice(0, 4), 10) : 0);
+  return {
+    identifier: d.identifier,
+    title: d.title || 'Untitled',
+    description: d.description || '',
+    creator: d.creator || 'Unknown',
+    date: d.date || '',
+    downloads: d.downloads || 0,
+    avgRating: d.avg_rating || 0,
+    subject: parseSubject(d.subject),
+    mediatype: d.mediatype || '',
+    thumb: `https://archive.org/services/img/${d.identifier}`,
+    year: isNaN(yearNum) ? 0 : yearNum,
+  };
+}
+
 function findBestVideo(files: IAFile[]): IAFile | null {
   const videos = files.filter(
-    (f) => f.format === 'MPEG4' || f.format === 'h.264'
+    (f) => f.format === 'MPEG4' || f.format === 'h.264',
   ).filter((f) => {
     const name = f.name.toLowerCase();
     return !name.endsWith('.srt') && !name.endsWith('.vtt') &&
@@ -87,35 +113,22 @@ export const InternetArchiveService = {
   async search(query: string, page: number = 1, rows: number = 30): Promise<{ items: IAItem[]; total: number }> {
     const url = `${BASE}/advancedsearch.php?q=${encodeURIComponent(query)}` +
       `&fl[]=identifier,title,description,creator,date,downloads,avg_rating,subject,mediatype,year` +
-      `&sort[]=&sort=downloads+desc&rows=${rows}&page=${page}&output=json`;
+      `&sort=downloads+desc&rows=${rows}&page=${page}&output=json`;
 
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     const data: IASearchResponse = await res.json();
 
-    const items: IAItem[] = (data.response.docs || []).map((d) => ({
-      identifier: d.identifier,
-      title: d.title || 'Untitled',
-      description: d.description || '',
-      creator: d.creator || 'Unknown',
-      date: d.date || '',
-      downloads: d.downloads || 0,
-      avgRating: d.avg_rating || 0,
-      subject: d.subject || [],
-      mediatype: d.mediatype || '',
-      thumb: `https://archive.org/services/img/${d.identifier}`,
-      year: d.year || 0,
-    }));
+    const items: IAItem[] = (data.response.docs || []).map(toIAItem);
 
     return { items, total: data.response.numFound };
   },
 
   async getDetails(identifier: string): Promise<{ item: IAItem | null; files: IAFile[]; videoUrl: string | null }> {
-    const res = await fetch(`${BASE}/metadata/${encodeURIComponent(identifier)}`);
-    const data: IAMetadataResponse = await res.json();
+    const res = await fetchWithTimeout(`${BASE}/metadata/${encodeURIComponent(identifier)}`);
+    const data: { metadata: Record<string, unknown>; files: Array<Record<string, unknown>> } = await res.json();
 
-    const rawFiles: Array<Record<string, unknown>> = data.files || [];
     const files: IAFile[] = [];
-    for (const f of rawFiles) {
+    for (const f of data.files || []) {
       const name = String(f.name || '');
       const source = String(f.source || '');
       const format = String(f.format || '');
@@ -138,18 +151,19 @@ export const InternetArchiveService = {
       : null;
 
     const md = data.metadata || {};
+    const yearNum = md.year ? Number(md.year) : (md.date ? parseInt(String(md.date).slice(0, 4), 10) : 0);
     const item: IAItem = {
       identifier,
-      title: (md.title as string) || identifier,
-      description: (md.description as string) || '',
-      creator: (md.creator as string) || 'Unknown',
-      date: (md.date as string) || '',
-      downloads: (md.downloads as number) || 0,
-      avgRating: (md.avg_rating as number) || 0,
-      subject: Array.isArray(md.subject) ? md.subject as string[] : [],
-      mediatype: (md.mediatype as string) || '',
+      title: String(md.title || identifier),
+      description: String(md.description || ''),
+      creator: String(md.creator || 'Unknown'),
+      date: String(md.date || ''),
+      downloads: Number(md.downloads) || 0,
+      avgRating: Number(md.avg_rating) || 0,
+      subject: parseSubject(md.subject),
+      mediatype: String(md.mediatype || ''),
       thumb: `https://archive.org/services/img/${identifier}`,
-      year: (md.year as number) || 0,
+      year: isNaN(yearNum) ? 0 : yearNum,
     };
 
     return { item, files, videoUrl };
