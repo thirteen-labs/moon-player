@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { VideoRef, TextTrack, AudioTrack } from 'react-native-video';
-import type { LibraryVideo, Bookmark, SleepTimerState } from '../library/types';
+import type { LibraryVideo } from '../library/types';
 import { LibraryContext } from '../library/LibraryContext';
 import { PlaybackService } from './PlaybackService';
 import { backgroundAudioService } from '../services/BackgroundAudioService';
@@ -36,13 +36,6 @@ export interface PlayerContextValue {
   onLoad: (data: { duration: number }) => void;
   onEnd: () => void;
   onError: (error: Error) => void;
-  sleepTimer: SleepTimerState | null;
-  startSleepTimer: (minutes: number) => void;
-  cancelSleepTimer: () => void;
-  bookmarks: Bookmark[];
-  addBookmark: (label?: string) => void;
-  removeBookmark: (id: string) => void;
-  setBookmarks: (bookmarks: Bookmark[]) => void;
   audioTracks: AudioTrack[];
   selectedAudioTrack: number;
   setSelectedAudioTrack: (index: number) => void;
@@ -54,8 +47,6 @@ export interface PlayerContextValue {
   exitPiP: () => void;
   isAudioOnly: boolean;
   setAudioOnly: (v: boolean) => void;
-  aspectRatio: string;
-  setAspectRatio: (r: string) => void;
   playbackState: PlaybackState;
   isBackgroundAudioEnabled: boolean;
   toggleBackgroundAudio: () => void;
@@ -70,12 +61,10 @@ const defaultContext: PlayerContextValue = {
   next: () => {}, previous: () => {}, setQueue: () => {}, addToQueue: () => {},
   removeFromQueue: () => {}, moveQueueItem: () => {}, clearQueue: () => {},
   onProgress: () => {}, onLoad: () => {}, onEnd: () => {}, onError: () => {},
-  sleepTimer: null, startSleepTimer: () => {}, cancelSleepTimer: () => {},
-  bookmarks: [], addBookmark: () => {}, removeBookmark: () => {}, setBookmarks: () => {},
   audioTracks: [], selectedAudioTrack: -1, setSelectedAudioTrack: () => {},
   textTracks: [], selectedTextTrack: -1, setSelectedTextTrack: () => {},
   isPiPActive: false, enterPiP: () => {}, exitPiP: () => {},
-  isAudioOnly: false, setAudioOnly: () => {}, aspectRatio: 'auto', setAspectRatio: () => {},
+  isAudioOnly: false, setAudioOnly: () => {},
   playbackState: 'idle', isBackgroundAudioEnabled: false, toggleBackgroundAudio: () => {},
 };
 
@@ -101,11 +90,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const [volume, setVolumeState] = useState<number>(1.0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
-  const [sleepTimer, setSleepTimer] = useState<SleepTimerState | null>(null);
-  const [bookmarks, setBookmarksState] = useState<Bookmark[]>([]);
   const [isPiPActive, setIsPiPActive] = useState<boolean>(false);
   const [isAudioOnly, setAudioOnlyState] = useState<boolean>(false);
-  const [aspectRatio, setAspectRatioState] = useState<string>('auto');
   const [isBackgroundAudioEnabled, setIsBackgroundAudioEnabled] = useState<boolean>(false);
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [selectedAudioTrack, setSelectedAudioTrack] = useState<number>(0);
@@ -137,8 +123,6 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       setVolumeState(snapshot.volume);
       setIsMuted(snapshot.isMuted);
       setPlaybackState(snapshot.state);
-      setSleepTimer(snapshot.sleepTimer as SleepTimerState | null);
-      setBookmarksState(snapshot.bookmarks);
     });
 
     return () => {
@@ -239,22 +223,6 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     console.warn('Video error:', error);
   }, []);
 
-  const startSleepTimer = useCallback((minutes: number) => {
-    playbackServiceRef.current.startSleepTimer(minutes);
-  }, []);
-
-  const cancelSleepTimer = useCallback(() => {
-    playbackServiceRef.current.cancelSleepTimer();
-  }, []);
-
-  const addBookmark = useCallback((label?: string) => {
-    playbackServiceRef.current.addBookmark(label);
-  }, []);
-
-  const removeBookmark = useCallback((id: string) => {
-    playbackServiceRef.current.removeBookmark(id);
-  }, []);
-
   const enterPiP = useCallback(() => {
     pipService.enterPiP(videoRef.current);
   }, []);
@@ -278,13 +246,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       playVideo, togglePlay, seekTo, setPlaybackSpeed, setVolume, toggleMute,
       next, previous, setQueue, addToQueue, removeFromQueue, moveQueueItem, clearQueue,
       onProgress, onLoad, onEnd, onError,
-      sleepTimer, startSleepTimer, cancelSleepTimer,
-      bookmarks, addBookmark, removeBookmark, setBookmarks: setBookmarksState,
       audioTracks, selectedAudioTrack, setSelectedAudioTrack,
       textTracks, selectedTextTrack, setSelectedTextTrack,
       isPiPActive, enterPiP, exitPiP,
       isAudioOnly, setAudioOnly: setAudioOnlyState,
-      aspectRatio, setAspectRatio: setAspectRatioState,
       playbackState, isBackgroundAudioEnabled, toggleBackgroundAudio,
     }),
     [
@@ -293,12 +258,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       playVideo, togglePlay, seekTo, setPlaybackSpeed, setVolume, toggleMute,
       next, previous, setQueue, addToQueue, removeFromQueue, moveQueueItem, clearQueue,
       onProgress, onLoad, onEnd, onError,
-      sleepTimer, startSleepTimer, cancelSleepTimer,
-      bookmarks, addBookmark, removeBookmark,
       audioTracks, selectedAudioTrack, setSelectedAudioTrack,
       textTracks, selectedTextTrack, setSelectedTextTrack,
       isPiPActive, enterPiP, exitPiP,
-      isAudioOnly, aspectRatio,
+      isAudioOnly,
       playbackState, isBackgroundAudioEnabled, toggleBackgroundAudio,
     ]
   );

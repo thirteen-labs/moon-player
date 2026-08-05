@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Dimensions, Animated, Platform } from 'react-native';
+import { View, StyleSheet, Dimensions, Animated, Platform } from 'react-native';
 import Video, { SelectedTrackType } from 'react-native-video';
 import { Gesture } from 'react-native-gesture-handler';
 import { useTheme } from '../theme';
 import { usePlayer } from '../player';
 import { useLibrary } from '../library';
 import { useSettings } from '../storage';
-import { triggerHaptic } from '../utils/haptics';
 import { SubtitleOverlay } from '../subtitles/SubtitleOverlay';
-import { VideoFilterOverlay } from '../components/VideoFilterOverlay';
 import { Toast } from '../components/Toast';
 import { TransportControls } from '../components/player/TransportControls';
 import { SeekBar } from '../components/player/SeekBar';
@@ -21,17 +19,15 @@ import { GestureOverlay } from '../components/player/GestureOverlay';
 import { AudioOverlay } from '../components/player/AudioOverlay';
 import { SubtitleVideoOverlay } from '../components/player/SubtitleVideoOverlay';
 import { MetadataPanel } from '../components/player/MetadataPanel';
-import { SleepTimerPanel } from '../components/player/SleepTimerPanel';
-import { BookmarksPanel } from '../components/player/BookmarksPanel';
 import { ToolsPanel } from '../components/player/ToolsPanel';
 
 const { width: W, height: H } = Dimensions.get('window');
 
-type MoreSheet = 'none' | 'tools' | 'bookmarks' | 'metadata' | 'sleeptimer' | 'audio' | 'video' | 'subtitlestudio';
+type MoreSheet = 'none' | 'tools' | 'metadata' | 'audio' | 'video';
 
 export function PlayerScreen({ routeUri }: { routeUri?: string }) {
   const { theme } = useTheme();
-  const { spacing, borderRadius } = theme;
+  const { spacing } = theme;
   const { settings } = useSettings();
 
   const {
@@ -39,8 +35,6 @@ export function PlayerScreen({ routeUri }: { routeUri?: string }) {
     volume, isMuted, videoRef, playVideo, togglePlay, seekTo,
     setPlaybackSpeed, setVolume, toggleMute, next, previous,
     onProgress, onLoad, onEnd, onError,
-    sleepTimer, startSleepTimer, cancelSleepTimer,
-    bookmarks, addBookmark, removeBookmark,
     isAudioOnly, setAudioOnly,
     audioTracks, selectedAudioTrack, setSelectedAudioTrack,
     textTracks, selectedTextTrack, setSelectedTextTrack,
@@ -64,11 +58,8 @@ export function PlayerScreen({ routeUri }: { routeUri?: string }) {
   const [brightness, setBrightness] = useState(0.7);
   const [isLocked, setIsLocked] = useState(false);
   const [moreSheet, setMoreSheet] = useState<MoreSheet>('none');
-  const [screenshotFeedback, setScreenshotFeedback] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [resizeMode, setResizeMode] = useState<'contain' | 'cover'>('contain');
-  const [rotation, setRotation] = useState<0 | 90 | 180 | 270>(0);
-  const [mirror, setMirror] = useState(false);
   const [longPressSpeed, setLongPressSpeed] = useState(false);
   const [skipIndicator, setSkipIndicator] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState('');
@@ -116,46 +107,6 @@ export function PlayerScreen({ routeUri }: { routeUri?: string }) {
     const idx = speeds.indexOf(playbackSpeed);
     setPlaybackSpeed(speeds[(idx + 1) % speeds.length]);
   };
-
-  const handleScreenshot = useCallback(async () => {
-    try {
-      if (video?.file.uri) {
-        const { getThumbnailAsync } = await import('expo-video-thumbnails');
-        const result = await getThumbnailAsync(video.file.uri, { time: position * 1000 });
-        if (result?.uri) {
-          const { shareAsync } = await import('expo-sharing');
-          await shareAsync(result.uri);
-          showToast('Frame captured');
-        }
-      } else {
-        setScreenshotFeedback(true);
-        setTimeout(() => setScreenshotFeedback(false), 800);
-        showToast('Screenshot saved');
-      }
-    } catch {
-      setScreenshotFeedback(true);
-      setTimeout(() => setScreenshotFeedback(false), 800);
-      showToast('Screenshot saved');
-    }
-    triggerHaptic('medium');
-  }, [video, position, showToast]);
-
-  const handleExtractThumbnail = useCallback(async () => {
-    try {
-      if (video?.file.uri) {
-        const { getThumbnailAsync } = await import('expo-video-thumbnails');
-        const result = await getThumbnailAsync(video.file.uri, { time: position * 1000 });
-        if (result?.uri) {
-          const { shareAsync } = await import('expo-sharing');
-          await shareAsync(result.uri);
-          showToast('Thumbnail shared');
-        }
-      }
-    } catch {
-      showToast('Thumbnail extraction failed');
-    }
-    triggerHaptic('light');
-  }, [video, position, showToast]);
 
   /* eslint-disable react-hooks/refs */
   const panGesture = useMemo(() => Gesture.Pan()
@@ -216,20 +167,12 @@ export function PlayerScreen({ routeUri }: { routeUri?: string }) {
 
   const composedGesture = useMemo(() => Gesture.Simultaneous(panGesture, leftDoubleTap, longPress, pinch), [panGesture, leftDoubleTap, longPress, pinch]);
 
-  const videoTransform = useMemo(() => {
-    const transforms = [];
-    if (rotation !== 0) transforms.push({ rotate: `${rotation}deg` });
-    if (mirror) transforms.push({ scaleX: -1 });
-    return transforms.length > 0 ? { transform: transforms } : {};
-  }, [rotation, mirror]);
-
   const videoSource = video?.file.uri
     ? video.file.uri.startsWith('http')
       ? { uri: video.file.uri, isNetwork: true }
       : { uri: video.file.uri }
     : undefined;
 
-  const videoBookmarks = useMemo(() => bookmarks.filter((b) => b.videoId === video?.id), [bookmarks, video?.id]);
   const metadata = video?.metadata;
 
   const toggleSheet = useCallback((sheet: MoreSheet) => {
@@ -243,7 +186,7 @@ export function PlayerScreen({ routeUri }: { routeUri?: string }) {
         <Video
           ref={videoRef}
           source={videoSource}
-          style={[StyleSheet.absoluteFill, videoTransform]}
+          style={StyleSheet.absoluteFill}
           paused={!isPlaying}
           rate={longPressSpeed ? 2.0 : playbackSpeed}
           volume={effectiveVolume}
@@ -261,22 +204,8 @@ export function PlayerScreen({ routeUri }: { routeUri?: string }) {
         />
       )}
 
-      <VideoFilterOverlay enabled />
       <SubtitleOverlay />
-      <PlayerBadges longPressSpeed={longPressSpeed} skipIndicator={skipIndicator} screenshotFeedback={screenshotFeedback} isAudioOnly={isAudioOnly} />
-
-      {sleepTimer?.isActive && moreSheet === 'none' && (
-        <Pressable onPress={() => setMoreSheet('sleeptimer')} style={{
-          position: 'absolute', top: spacing.xl + 50, right: spacing.md,
-          backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: spacing.sm, paddingVertical: 4,
-          borderRadius: borderRadius.full, flexDirection: 'row', alignItems: 'center', gap: 4, zIndex: 30,
-        }}>
-          <Text style={{ fontSize: 12 }}>⏰</Text>
-          <Text style={{ color: '#fff', fontSize: 12 }}>
-            {Math.floor(sleepTimer.remainingSeconds / 60)}:{String(sleepTimer.remainingSeconds % 60).padStart(2, '0')}
-          </Text>
-        </Pressable>
-      )}
+      <PlayerBadges longPressSpeed={longPressSpeed} skipIndicator={skipIndicator} isAudioOnly={isAudioOnly} />
 
       <Toast message={toastMessage} visible={toastVisible} onHide={() => setToastVisible(false)} />
 
@@ -299,7 +228,7 @@ export function PlayerScreen({ routeUri }: { routeUri?: string }) {
       {controlsVisible && !isLocked && (
         <Animated.View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0, 0, 0, 0.85)', paddingTop: spacing.md, paddingBottom: spacing.xl, paddingHorizontal: spacing.md, opacity: fadeAnim }}>
           <SeekBar position={position} duration={duration} progress={progress} onSeek={seekTo} />
-          <BottomToolbar playbackSpeed={playbackSpeed} longPressSpeed={longPressSpeed} videoBookmarks={videoBookmarks} onSpeedCycle={handleSpeedCycle} onAddBookmark={addBookmark} onToggleSheet={toggleSheet as (sheet: string) => void} currentSheet={moreSheet} />
+          <BottomToolbar playbackSpeed={playbackSpeed} longPressSpeed={longPressSpeed} onSpeedCycle={handleSpeedCycle} onToggleSheet={toggleSheet as (sheet: string) => void} currentSheet={moreSheet} />
         </Animated.View>
       )}
 
@@ -307,40 +236,17 @@ export function PlayerScreen({ routeUri }: { routeUri?: string }) {
         <AudioOverlay audioTracks={audioTracks} selectedAudioTrack={selectedAudioTrack} isAudioOnly={isAudioOnly} onSelectTrack={setSelectedAudioTrack} onToggleAudioOnly={() => setAudioOnly(!isAudioOnly)} onClose={() => setMoreSheet('none')} />
       )}
 
-      {moreSheet === 'subtitlestudio' && (
-        <View style={styles.overlay}>
-          <View style={styles.overlayHeader}>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Subtitle Studio</Text>
-            <Pressable onPress={() => setMoreSheet('none')}><Text style={{ color: '#999', fontSize: 18 }}>✕</Text></Pressable>
-          </View>
-          <Text style={{ color: '#fff', fontSize: 14, paddingVertical: 12 }}>Coming Soon</Text>
-        </View>
-      )}
-
       {moreSheet === 'video' && (
-        <SubtitleVideoOverlay textTracks={textTracks} selectedTextTrack={selectedTextTrack} externalSubtitles={video?.subtitles} resizeMode={resizeMode} rotation={rotation} mirror={mirror} onSelectTextTrack={setSelectedTextTrack} onRotateChange={setRotation} onMirrorChange={setMirror} onZoomChange={setResizeMode} onOpenSubtitleStudio={() => setMoreSheet('subtitlestudio')} onClose={() => setMoreSheet('none')} />
+        <SubtitleVideoOverlay textTracks={textTracks} selectedTextTrack={selectedTextTrack} externalSubtitles={video?.subtitles} resizeMode={resizeMode} onSelectTextTrack={setSelectedTextTrack} onZoomChange={setResizeMode} onClose={() => setMoreSheet('none')} />
       )}
 
       {moreSheet === 'metadata' && (
         <MetadataPanel metadata={metadata || undefined} fileSize={video?.file.size} filePath={video?.file.path} onClose={() => setMoreSheet('none')} />
       )}
 
-      {moreSheet === 'sleeptimer' && (
-        <SleepTimerPanel sleepTimer={sleepTimer} onStartTimer={startSleepTimer} onCancelTimer={cancelSleepTimer} onClose={() => setMoreSheet('none')} />
-      )}
-
-      {moreSheet === 'bookmarks' && (
-        <BookmarksPanel bookmarks={videoBookmarks} onSeek={seekTo} onRemove={removeBookmark} onClose={() => setMoreSheet('none')} />
-      )}
-
       {moreSheet === 'tools' && (
-        <ToolsPanel onAddBookmark={addBookmark} onOpenBookmarks={() => setMoreSheet('bookmarks')} onScreenshot={handleScreenshot} onExtractThumbnail={handleExtractThumbnail} onOpenTimer={() => setMoreSheet('sleeptimer')} onOpenInfo={() => setMoreSheet('metadata')} onOpenAudio={() => setMoreSheet('audio')} onOpenVideo={() => setMoreSheet('video')} onOpenSubtitles={() => setMoreSheet('subtitlestudio')} onPiP={handlePiP} isBackgroundAudioEnabled={isBackgroundAudioEnabled} onToggleBackgroundAudio={toggleBackgroundAudio} onClose={() => setMoreSheet('none')} />
+        <ToolsPanel onOpenInfo={() => setMoreSheet('metadata')} onOpenAudio={() => setMoreSheet('audio')} onOpenVideo={() => setMoreSheet('video')} onPiP={handlePiP} isBackgroundAudioEnabled={isBackgroundAudioEnabled} onToggleBackgroundAudio={toggleBackgroundAudio} onClose={() => setMoreSheet('none')} />
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { position: 'absolute', bottom: 120, left: 16, right: 16, backgroundColor: 'rgba(20,20,20,0.95)', borderRadius: 16, padding: 16, zIndex: 50, maxHeight: H * 0.5 },
-  overlayHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
-});

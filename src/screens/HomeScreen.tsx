@@ -2,11 +2,9 @@ import { useMemo } from 'react';
 import { View, Text, ScrollView, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { useTheme } from '../theme';
 import { useLibrary } from '../library';
-import { useAudioLibrary } from '../audio';
 import { useRouter } from 'expo-router';
 import { ContinueWatchingCard } from '../components/ContinueWatchingCard';
 import { MovieCard } from '../components/MovieCard';
-import { AudioCard } from '../components/AudioCard';
 import { SectionHeader } from '../components/SectionHeader';
 import { EmptyState } from '../components/EmptyState';
 import { formatDuration } from '../utils/format';
@@ -26,7 +24,6 @@ export function HomeScreen() {
   const { colors, theme } = useTheme();
   const { spacing, borderRadius, typography } = theme;
   const { videos, isScanning } = useLibrary();
-  const { tracks: audioTracks } = useAudioLibrary();
   const router = useRouter();
 
   const greeting = useMemo(() => {
@@ -45,10 +42,6 @@ export function HomeScreen() {
   const recentlyAdded = useMemo(() => {
     return [...videos].sort((a, b) => b.addedAt - a.addedAt);
   }, [videos]);
-
-  const recentlyAddedAudio = useMemo(() => {
-    return [...audioTracks].sort((a, b) => b.addedAt - a.addedAt).slice(0, 10);
-  }, [audioTracks]);
 
   const folders = useMemo(() => {
     return groupVideosByFolder(videos);
@@ -202,31 +195,6 @@ onPlayPress={() => router.push(`/player?id=${encodeURIComponent(headerVideo.id)}
             />
           ) : null}
         </View>
-
-        {/* Recently Added Audio Section */}
-        {recentlyAddedAudio.length > 0 && (
-          <View style={{ marginTop: spacing.md }}>
-            <SectionHeader title="New Music" onViewAllPress={() => router.push('/library')} />
-            <FlatList
-              data={recentlyAddedAudio}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: spacing.md }}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <AudioCard
-                  title={item.metadata?.title || item.file.name.replace(/\.[^/.]+$/, '')}
-                  artist={item.metadata?.artist || 'Unknown Artist'}
-                  album={item.metadata?.album || ''}
-                  artworkUri={item.artworkUri}
-                  duration={formatDuration(item.metadata?.duration ?? 0)}
-                  onPress={() => router.push(`/audio-player?id=${encodeURIComponent(item.id)}`)}
-                  onPlayPress={() => router.push(`/audio-player?id=${encodeURIComponent(item.id)}`)}
-                />
-              )}
-            />
-          </View>
-        )}
 
         {/* Collections / Categories Section */}
         <View style={{ marginTop: spacing.lg }}>

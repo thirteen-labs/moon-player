@@ -27,16 +27,7 @@ export interface SettingsData {
   subtitleShadow: boolean;
   subtitleOutline: boolean;
   subtitlePosition: 'bottom' | 'top' | 'middle';
-  audioEqualizer: number[];
-  bassBoost: number;
-  dialogueBoost: boolean;
-  audioNormalization: boolean;
   volumeBoost: number;
-  brightness: number;
-  contrast: number;
-  saturation: number;
-  gamma: number;
-  temperature: number;
   skipDuration: number;
   recentSearches: string[];
   updatedAt: number;
@@ -74,16 +65,7 @@ const DEFAULT_SETTINGS: SettingsData = {
   subtitleShadow: true,
   subtitleOutline: false,
   subtitlePosition: 'bottom',
-  audioEqualizer: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  bassBoost: 0,
-  dialogueBoost: false,
-  audioNormalization: false,
   volumeBoost: 1.0,
-  brightness: 1.0,
-  contrast: 1.0,
-  saturation: 1.0,
-  gamma: 1.0,
-  temperature: 0,
   skipDuration: 10,
   recentSearches: [],
   updatedAt: 0,

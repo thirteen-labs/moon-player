@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const CREATE_TABLES = [
   `CREATE TABLE IF NOT EXISTS schema_version (
@@ -60,41 +60,6 @@ export const CREATE_TABLES = [
   `CREATE INDEX IF NOT EXISTS idx_videos_is_favorite ON videos(is_favorite)`,
   `CREATE INDEX IF NOT EXISTS idx_subtitles_video_uri ON subtitles(video_uri)`,
   `CREATE INDEX IF NOT EXISTS idx_playlist_videos_playlist_id ON playlist_videos(playlist_id)`,
-  `CREATE TABLE IF NOT EXISTS audio_tracks (
-    id TEXT PRIMARY KEY,
-    uri TEXT NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    path TEXT NOT NULL,
-    size INTEGER NOT NULL DEFAULT 0,
-    extension TEXT NOT NULL DEFAULT '',
-    modified_at INTEGER NOT NULL DEFAULT 0,
-    duration REAL NOT NULL DEFAULT 0,
-    title TEXT NOT NULL DEFAULT '',
-    artist TEXT NOT NULL DEFAULT '',
-    album TEXT NOT NULL DEFAULT '',
-    album_artist TEXT NOT NULL DEFAULT '',
-    genre TEXT NOT NULL DEFAULT '',
-    year INTEGER NOT NULL DEFAULT 0,
-    track_number INTEGER NOT NULL DEFAULT 0,
-    track_total INTEGER NOT NULL DEFAULT 0,
-    disc_number INTEGER NOT NULL DEFAULT 0,
-    disc_total INTEGER NOT NULL DEFAULT 0,
-    bitrate INTEGER NOT NULL DEFAULT 0,
-    sample_rate INTEGER NOT NULL DEFAULT 0,
-    audio_codec TEXT NOT NULL DEFAULT '',
-    channels INTEGER NOT NULL DEFAULT 0,
-    composer TEXT NOT NULL DEFAULT '',
-    artwork_uri TEXT,
-    added_at INTEGER NOT NULL,
-    last_played_at INTEGER,
-    play_count INTEGER NOT NULL DEFAULT 0,
-    resume_position REAL NOT NULL DEFAULT 0,
-    is_favorite INTEGER NOT NULL DEFAULT 0
-  )`,
-  `CREATE INDEX IF NOT EXISTS idx_audio_tracks_artist ON audio_tracks(artist)`,
-  `CREATE INDEX IF NOT EXISTS idx_audio_tracks_album ON audio_tracks(album)`,
-  `CREATE INDEX IF NOT EXISTS idx_audio_tracks_added_at ON audio_tracks(added_at DESC)`,
-  `CREATE INDEX IF NOT EXISTS idx_audio_tracks_is_favorite ON audio_tracks(is_favorite)`,
   `CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL

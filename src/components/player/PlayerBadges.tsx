@@ -3,11 +3,10 @@ import { View, Text } from 'react-native';
 interface PlayerBadgesProps {
   longPressSpeed: boolean;
   skipIndicator: number | null;
-  screenshotFeedback: boolean;
   isAudioOnly: boolean;
 }
 
-export function PlayerBadges({ longPressSpeed, skipIndicator, screenshotFeedback, isAudioOnly }: PlayerBadgesProps) {
+export function PlayerBadges({ longPressSpeed, skipIndicator, isAudioOnly }: PlayerBadgesProps) {
   return (
     <>
       {isAudioOnly && (
@@ -22,12 +21,6 @@ export function PlayerBadges({ longPressSpeed, skipIndicator, screenshotFeedback
       {skipIndicator !== null && (
         <View style={styles.centerBadge}>
           <Text style={styles.centerBadgeText}>{skipIndicator > 0 ? `+${skipIndicator}s` : `${skipIndicator}s`}</Text>
-        </View>
-      )}
-      {screenshotFeedback && (
-        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} pointerEvents="none">
-          <Text style={{ color: '#fff', fontSize: 48 }}>📸</Text>
-          <Text style={{ color: '#fff', fontSize: 14, marginTop: 8 }}>Screenshot saved</Text>
         </View>
       )}
     </>

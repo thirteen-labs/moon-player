@@ -54,16 +54,9 @@ async function applyMigration(database: SQLite.SQLiteDatabase, version: number):
   } else if (version === 2) {
     await database.execAsync(SETTINGS_TABLE);
   } else if (version === 3) {
-    const audioTable = CREATE_TABLES.find(
-      (s) => s.includes('CREATE TABLE IF NOT EXISTS audio_tracks')
-    );
-    if (audioTable) await database.execAsync(audioTable);
-    await database.execAsync(
-      'CREATE INDEX IF NOT EXISTS idx_audio_tracks_artist ON audio_tracks(artist)'
-    );
-    await database.execAsync(
-      'CREATE INDEX IF NOT EXISTS idx_audio_tracks_album ON audio_tracks(album)'
-    );
+    // v3 previously created the audio_tracks table; now a no-op.
+  } else if (version === 4) {
+    await database.execAsync('DROP TABLE IF EXISTS audio_tracks');
   }
 
   await database.runAsync(

@@ -15,9 +15,6 @@ export type {
   ScanResult,
   ScanCallback,
   VideoExtension,
-  AudioExtension,
   SubtitleExtension,
   Playlist,
-  Bookmark,
-  SleepTimerState,
 } from './types';

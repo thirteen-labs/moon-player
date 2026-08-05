@@ -2,40 +2,29 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Dimensions } from 'react
 const { height: H } = Dimensions.get('window');
 import { useTheme } from '../../theme';
 import { triggerHaptic } from '../../utils/haptics';
-import { VideoEnhancements } from '../VideoEnhancements';
 
 interface SubtitleVideoOverlayProps {
   textTracks: { title?: string; language?: string }[];
   selectedTextTrack: number;
   externalSubtitles?: { language: string; name: string }[];
   resizeMode: 'contain' | 'cover';
-  rotation: 0 | 90 | 180 | 270;
-  mirror: boolean;
   onSelectTextTrack: (index: number) => void;
-  onRotateChange: (r: 0 | 90 | 180 | 270) => void;
-  onMirrorChange: (m: boolean) => void;
   onZoomChange: (z: 'contain' | 'cover') => void;
-  onOpenSubtitleStudio: () => void;
   onClose: () => void;
 }
 
-export function SubtitleVideoOverlay({ textTracks, selectedTextTrack, externalSubtitles, resizeMode, rotation, mirror, onSelectTextTrack, onRotateChange, onMirrorChange, onZoomChange, onOpenSubtitleStudio, onClose }: SubtitleVideoOverlayProps) {
+export function SubtitleVideoOverlay({ textTracks, selectedTextTrack, externalSubtitles, resizeMode, onSelectTextTrack, onZoomChange, onClose }: SubtitleVideoOverlayProps) {
   const { colors, theme } = useTheme();
-  const { spacing } = theme;
+  const { spacing, borderRadius } = theme;
 
   return (
     <View style={styles.overlay}>
       <View style={styles.overlayHeader}>
-        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Subtitles & Video</Text>
+        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Video</Text>
         <Pressable onPress={onClose}><Text style={{ color: '#999', fontSize: 18 }}>✕</Text></Pressable>
       </View>
       <ScrollView style={{ maxHeight: 180 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
-          <Text style={{ color: '#999', fontSize: 12 }}>Subtitles</Text>
-          <Pressable onPress={onOpenSubtitleStudio}>
-            <Text style={{ color: colors.primary, fontSize: 12 }}>Style →</Text>
-          </Pressable>
-        </View>
+        <Text style={{ color: '#999', fontSize: 12, marginBottom: spacing.xs }}>Subtitles</Text>
         <Pressable
           onPress={() => { onSelectTextTrack(-1); triggerHaptic('light'); }}
           style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' }}
@@ -66,17 +55,11 @@ export function SubtitleVideoOverlay({ textTracks, selectedTextTrack, externalSu
           </>
         )}
       </ScrollView>
-      <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', marginTop: spacing.sm, paddingTop: spacing.sm }}>
-        <VideoEnhancements
-          currentZoom={resizeMode}
-          currentRotate={rotation}
-          currentMirror={mirror}
-          onRatioChange={() => {}}
-          onRotateChange={onRotateChange}
-          onMirrorChange={onMirrorChange}
-          onZoomChange={onZoomChange}
-          onClose={onClose}
-        />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', marginTop: spacing.sm }}>
+        <Text style={{ color: '#fff', fontSize: 13 }}>Zoom</Text>
+        <Pressable onPress={() => { onZoomChange(resizeMode === 'contain' ? 'cover' : 'contain'); triggerHaptic('light'); }} style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+          <Text style={{ color: '#fff', fontSize: 12 }}>{resizeMode === 'contain' ? 'Fit' : 'Fill'}</Text>
+        </Pressable>
       </View>
     </View>
   );

@@ -3,16 +3,14 @@ import { View, Text, Pressable, useWindowDimensions, Modal, TextInput, RefreshCo
 import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '../theme';
 import { useLibrary, usePlaylists } from '../library';
-import { useAudioLibrary } from '../audio';
 import { useRouter } from 'expo-router';
 import { useSettings } from '../storage';
 import { MovieCard } from '../components/MovieCard';
-import { AudioCard } from '../components/AudioCard';
 import { formatDuration } from '../utils/format';
 import { triggerHaptic } from '../utils/haptics';
 import { GridSkeleton } from '../components/SkeletonLoader';
 
-type Category = 'all' | 'movies' | 'tvshows' | 'anime' | 'others' | 'music' | 'favorites';
+type Category = 'all' | 'movies' | 'tvshows' | 'anime' | 'others' | 'favorites';
 type SortMode = 'name' | 'date' | 'duration';
 type ViewMode = 'grid' | 'collections';
 
@@ -58,23 +56,16 @@ export function LibraryScreen() {
 
   const { createPlaylist, addVideoToPlaylist } = usePlaylists();
 
-  const { tracks: audioTracks } = useAudioLibrary();
-
   const categories: { id: Category; label: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'movies', label: 'Movies' },
     { id: 'tvshows', label: 'TV Shows' },
     { id: 'anime', label: 'Anime' },
-    { id: 'music', label: 'Music' },
     { id: 'others', label: 'Others' },
     { id: 'favorites', label: '⭐ Favorites' },
   ];
 
-  const isMusicCategory = selectedCategory === 'music';
-
   const filteredVideos = useMemo(() => {
-    if (isMusicCategory) return [];
-
     const col = COLLECTIONS.find((c) => c.id === selectedCategory);
     const list = col ? col.filter([...videos]) : [...videos];
 
@@ -91,25 +82,7 @@ export function LibraryScreen() {
     }
     if (sortAsc) list.reverse();
     return list;
-  }, [videos, selectedCategory, sortMode, sortAsc, isMusicCategory]);
-
-  const filteredAudio = useMemo(() => {
-    if (!isMusicCategory) return [];
-    const list = [...audioTracks];
-    switch (sortMode) {
-      case 'name':
-        list.sort((a, b) => a.file.name.localeCompare(b.file.name));
-        break;
-      case 'date':
-        list.sort((a, b) => b.addedAt - a.addedAt);
-        break;
-      case 'duration':
-        list.sort((a, b) => (b.metadata?.duration ?? 0) - (a.metadata?.duration ?? 0));
-        break;
-    }
-    if (sortAsc) list.reverse();
-    return list;
-  }, [audioTracks, sortMode, sortAsc, isMusicCategory]);
+  }, [videos, selectedCategory, sortMode, sortAsc]);
 
   const collectionItems = useMemo(() =>
     COLLECTIONS.filter((c) => c.id !== 'favorites').map((c) => ({
@@ -140,29 +113,8 @@ export function LibraryScreen() {
     setContextMenuVideo(video);
   }, [batchMode]);
 
-  type GridItem = import('../audio/types').LibraryAudio;
-
-  const renderItem = (item: LibraryVideo | GridItem, isAudio: boolean) => {
-    if (isAudio) {
-      const audio = item as GridItem;
-      return (
-        <View style={{ width: cardWidth }}>
-          <Pressable onPress={() => router.push(`/audio-player?id=${encodeURIComponent(audio.id)}`)}>
-            <AudioCard
-              title={audio.metadata?.title || audio.file.name.replace(/\.[^/.]+$/, '')}
-              artist={audio.metadata?.artist || 'Unknown Artist'}
-              album={audio.metadata?.album || ''}
-              artworkUri={audio.artworkUri}
-              duration={formatDuration(audio.metadata?.duration ?? 0)}
-              onPress={() => router.push(`/audio-player?id=${encodeURIComponent(audio.id)}`)}
-              onPlayPress={() => router.push(`/audio-player?id=${encodeURIComponent(audio.id)}`)}
-            />
-          </Pressable>
-        </View>
-      );
-    }
-
-    const video = item as LibraryVideo;
+  const renderItem = (item: LibraryVideo) => {
+    const video = item;
     return (
       <View style={{ width: cardWidth }}>
         <Pressable
@@ -217,7 +169,7 @@ export function LibraryScreen() {
         </Pressable>
       ))}
       <Pressable
-        onPress={() => { setViewMode('grid'); setSelectedCategory('music'); }}
+        onPress={() => { setViewMode('grid'); setSelectedCategory('movies'); }}
         style={{
           width: (screenWidth - spacing.md * 2 - spacing.md) / 2,
           padding: spacing.lg,
@@ -226,9 +178,9 @@ export function LibraryScreen() {
           alignItems: 'center',
         }}
       >
-        <Text style={{ fontSize: 36, marginBottom: spacing.sm }}>🎵</Text>
-        <Text style={{ color: colors.text, fontWeight: typography.weights.semibold, fontSize: typography.sizes.md }}>Music</Text>
-        <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.sm, marginTop: 4 }}>{audioTracks.length} tracks</Text>
+        <Text style={{ fontSize: 36, marginBottom: spacing.sm }}>🎬</Text>
+        <Text style={{ color: colors.text, fontWeight: typography.weights.semibold, fontSize: typography.sizes.md }}>Movies</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.sm, marginTop: 4 }}>{videos.length} videos</Text>
       </Pressable>
       {playlists.map((pl) => (
         <Pressable
@@ -329,37 +281,16 @@ export function LibraryScreen() {
         </View>
       )}
 
-      {isScanning && filteredVideos.length === 0 && filteredAudio.length === 0 ? (
+      {isScanning && filteredVideos.length === 0 ? (
         <GridSkeleton columns={3} count={9} />
-      ) : viewMode === 'collections' ? renderCollectionsView() : isMusicCategory ? (
-        filteredAudio.length > 0 ? (
-          <FlashList
-            data={filteredAudio}
-            keyExtractor={(item) => item.id}
-            numColumns={gridColumns}
-            contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xl }}
-            renderItem={({ item }) => renderItem(item, true)}
-          />
-        ) : (
-          !isScanning && (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}>
-              <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.lg, textAlign: 'center' }}>
-                No music found{'\n'}
-                <Text style={{ fontSize: typography.sizes.sm, color: colors.textTertiary }}>
-                  Pull down to scan or add scan directories in Settings
-                </Text>
-              </Text>
-            </View>
-          )
-        )
-      ) : (
+      ) : viewMode === 'collections' ? renderCollectionsView() : (
         filteredVideos.length > 0 ? (
           <FlashList
             data={filteredVideos}
             keyExtractor={(item) => item.id}
             numColumns={gridColumns}
             contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xl }}
-            renderItem={({ item }) => renderItem(item, false)}
+            renderItem={({ item }) => renderItem(item)}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
             }

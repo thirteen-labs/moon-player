@@ -1,5 +1,5 @@
 import type { PlaybackState } from './types';
-import type { LibraryVideo, Bookmark } from '../library/types';
+import type { LibraryVideo } from '../library/types';
 
 export interface PlaybackStateSnapshot {
   state: PlaybackState;
@@ -11,15 +11,7 @@ export interface PlaybackStateSnapshot {
   playbackSpeed: number;
   volume: number;
   isMuted: boolean;
-  sleepTimer: SleepTimerState | null;
-  bookmarks: Bookmark[];
   playCount: number;
-}
-
-export interface SleepTimerState {
-  isActive: boolean;
-  remainingSeconds: number;
-  startedAt: number;
 }
 
 type PlaybackListener = (snapshot: PlaybackStateSnapshot) => void;
@@ -34,11 +26,8 @@ export class PlaybackService {
   private _playbackSpeed: number = 1.0;
   private _volume: number = 1.0;
   private _isMuted: boolean = false;
-  private _sleepTimer: SleepTimerState | null = null;
-  private _bookmarks: Bookmark[] = [];
   private _playCount: number = 0;
   private listeners: Set<PlaybackListener> = new Set();
-  private sleepTimerInterval: ReturnType<typeof setInterval> | null = null;
   private positionSaveInterval: ReturnType<typeof setInterval> | null = null;
   private onPositionSave: ((uri: string, position: number) => void) | null = null;
 
@@ -57,8 +46,6 @@ export class PlaybackService {
       playbackSpeed: this._playbackSpeed,
       volume: this._volume,
       isMuted: this._isMuted,
-      sleepTimer: this._sleepTimer,
-      bookmarks: this._bookmarks,
       playCount: this._playCount,
     };
   }
@@ -150,7 +137,6 @@ export class PlaybackService {
       this._position = this._currentVideo.resumePosition || 0;
       this._duration = this._currentVideo.metadata?.duration || 0;
       this._state = 'loading';
-      this._bookmarks = [];
       this.notify();
       return true;
     }
@@ -168,7 +154,6 @@ export class PlaybackService {
       this._position = this._currentVideo.resumePosition || 0;
       this._duration = this._currentVideo.metadata?.duration || 0;
       this._state = 'loading';
-      this._bookmarks = [];
       this.notify();
       return true;
     }
@@ -229,7 +214,6 @@ export class PlaybackService {
     this._state = 'idle';
     this._position = 0;
     this._duration = 0;
-    this._bookmarks = [];
     this.stopPositionSaveInterval();
     this.notify();
   }
@@ -251,65 +235,6 @@ export class PlaybackService {
 
   setError(): void {
     this._state = 'error';
-    this.notify();
-  }
-
-  addBookmark(label?: string): Bookmark {
-    const now = Date.now();
-    const bookmark: Bookmark = {
-      id: `bm_${now}_${Math.random().toString(36).substring(2, 6)}`,
-      videoId: this._currentVideo?.id || '',
-      timestamp: this._position,
-      label: label || `Bookmark at ${this.formatTime(this._position)}`,
-      createdAt: now,
-    };
-    this._bookmarks = [...this._bookmarks, bookmark];
-    this.notify();
-    return bookmark;
-  }
-
-  removeBookmark(id: string): void {
-    this._bookmarks = this._bookmarks.filter((b) => b.id !== id);
-    this.notify();
-  }
-
-  setBookmarks(bookmarks: Bookmark[]): void {
-    this._bookmarks = bookmarks;
-  }
-
-  clearBookmarks(): void {
-    this._bookmarks = [];
-  }
-
-  startSleepTimer(minutes: number): void {
-    this.cancelSleepTimer();
-    this._sleepTimer = {
-      isActive: true,
-      remainingSeconds: minutes * 60,
-      startedAt: Date.now(),
-    };
-    this.sleepTimerInterval = setInterval(() => {
-      if (this._sleepTimer) {
-        this._sleepTimer = {
-          ...this._sleepTimer,
-          remainingSeconds: this._sleepTimer.remainingSeconds - 1,
-        };
-        if (this._sleepTimer.remainingSeconds <= 0) {
-          this.cancelSleepTimer();
-          this.setPlaying(false);
-        }
-        this.notify();
-      }
-    }, 1000);
-    this.notify();
-  }
-
-  cancelSleepTimer(): void {
-    if (this.sleepTimerInterval) {
-      clearInterval(this.sleepTimerInterval);
-      this.sleepTimerInterval = null;
-    }
-    this._sleepTimer = null;
     this.notify();
   }
 
@@ -359,14 +284,6 @@ export class PlaybackService {
     }
   }
 
-  private formatTime(seconds: number): string {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  }
-
   private notify(): void {
     const snapshot = this.snapshot;
     for (const listener of this.listeners) {
@@ -376,7 +293,6 @@ export class PlaybackService {
 
   destroy(): void {
     this.stopPositionSaveInterval();
-    this.cancelSleepTimer();
     this.listeners.clear();
   }
 }

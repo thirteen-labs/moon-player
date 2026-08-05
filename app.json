@@ -9,7 +9,6 @@
     "scheme": "aura",
     "plugins": [
       "expo-font",
-      "expo-sharing",
       "expo-sqlite",
       [
         "expo-splash-screen",

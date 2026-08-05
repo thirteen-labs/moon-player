@@ -6,7 +6,7 @@ import { useSettings } from '../storage';
 import type { SettingsData } from '../storage';
 import type { ThemeId, AccentId } from '../theme/types';
 
-type SettingsPage = 'menu' | 'appearance' | 'playback' | 'gestures' | 'subtitles' | 'audio' | 'storage' | 'about';
+type SettingsPage = 'menu' | 'appearance' | 'playback' | 'gestures' | 'subtitles' | 'storage' | 'about';
 
 const THEMES: { id: ThemeId; name: string }[] = [
   { id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }, { id: 'oled', name: 'OLED' },
@@ -26,7 +26,6 @@ const ACCENTS: { id: AccentId; name: string; color: string }[] = [
 
 const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32];
-const EQ_BANDS = ['60Hz', '170Hz', '310Hz', '600Hz', '1kHz', '3kHz', '6kHz', '12kHz', '14kHz', '16kHz'];
 
 export function SettingsScreen() {
   const { colors, theme } = useTheme();
@@ -53,7 +52,6 @@ export function SettingsScreen() {
             { id: 'playback' as SettingsPage, title: 'Playback', subtitle: 'Speed, Defaults', icon: '▶' },
             { id: 'gestures' as SettingsPage, title: 'Gestures', subtitle: 'Customize Gestures', icon: '🖖' },
             { id: 'subtitles' as SettingsPage, title: 'Subtitles', subtitle: 'Style, Size, Color', icon: '💬' },
-            { id: 'audio' as SettingsPage, title: 'Audio', subtitle: 'Equalizer, Volume Boost', icon: '🔊' },
             { id: 'storage' as SettingsPage, title: 'Storage & Data', subtitle: 'Manage Storage', icon: '📁' },
             { id: 'about' as SettingsPage, title: 'About', subtitle: 'Version 1.0.0', icon: 'ℹ️' },
           ].map((item, index, arr) => (
@@ -64,33 +62,6 @@ export function SettingsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.text, fontSize: typography.sizes.md, fontWeight: typography.weights.semibold }}>{item.title}</Text>
                 <Text style={{ color: colors.textTertiary, fontSize: typography.sizes.xs, marginTop: 2 }}>{item.subtitle}</Text>
-              </View>
-              <Text style={{ color: colors.textTertiary, fontSize: 16 }}>›</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.xs, fontWeight: typography.weights.semibold, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, textTransform: 'uppercase', letterSpacing: 1 }}>Coming Soon</Text>
-        <View style={{ paddingHorizontal: spacing.md }}>
-          {[
-            { screen: 'networkStreaming' as const, title: 'Network Streaming', subtitle: 'SMB/NAS, HTTP Server', icon: '🌐' },
-            { screen: 'backupRestore' as const, title: 'Backup & Restore', subtitle: 'Library + Settings', icon: '💾' },
-            { screen: 'pluginSystem' as const, title: 'Plugin System', subtitle: 'Extend Aura', icon: '🧩' },
-            { screen: 'aiOrganization' as const, title: 'AI Organization', subtitle: 'On-device ML', icon: '🤖' },
-            { screen: 'layouts' as const, title: 'Responsive Layouts', subtitle: 'Desktop, TV, Tablet', icon: '📱' },
-            { screen: 'chromecast' as const, title: 'Chromecast', subtitle: 'Cast to devices', icon: '📡' },
-            { screen: 'crossSync' as const, title: 'Cross-Device Sync', subtitle: 'Seamless sync', icon: '🔄' },
-          ].map((item, index, arr) => (
-            <Pressable key={item.screen} onPress={() => router.push(`/extras/${item.screen}`)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: index < arr.length - 1 ? 1 : 0, borderBottomColor: colors.border }}>
-              <View style={{ width: 44, height: 44, borderRadius: borderRadius.md, backgroundColor: colors.surfaceVariant, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md }}>
-                <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontSize: typography.sizes.md, fontWeight: typography.weights.semibold }}>{item.title}</Text>
-                <Text style={{ color: colors.textTertiary, fontSize: typography.sizes.xs, marginTop: 2 }}>{item.subtitle}</Text>
-              </View>
-              <View style={{ backgroundColor: colors.primaryContainer, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.full, marginRight: spacing.sm }}>
-                <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '600' }}>v2.0</Text>
               </View>
               <Text style={{ color: colors.textTertiary, fontSize: 16 }}>›</Text>
             </Pressable>
@@ -271,51 +242,6 @@ export function SettingsScreen() {
     </ScrollView>
   );
 
-  const renderAudio = () => (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing['2xl'] }}>
-      <Pressable onPress={() => setPage('menu')} style={{ marginBottom: spacing.lg }}>
-        <Text style={{ color: colors.primary, fontSize: typography.sizes.md }}>‹ Back</Text>
-      </Pressable>
-      <Text style={{ color: colors.text, fontSize: typography.sizes.xl, fontWeight: typography.weights.bold, marginBottom: spacing.lg }}>Audio</Text>
-
-      <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, marginBottom: spacing.sm, textTransform: 'uppercase' }}>Equalizer (10-Band)</Text>
-      <View style={{ marginBottom: spacing.xl }}>
-        {EQ_BANDS.map((band, i) => (
-          <View key={band} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
-            <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.xs, width: 50 }}>{band}</Text>
-            <View style={{ flex: 1, height: 4, backgroundColor: colors.surfaceVariant, borderRadius: 2, marginHorizontal: spacing.sm }}>
-              <View style={{ width: `${((settings.audioEqualizer[i] || 0) + 20) / 40 * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
-            </View>
-            <Text style={{ color: colors.text, fontSize: typography.sizes.xs, width: 40, textAlign: 'right' }}>{settings.audioEqualizer[i] || 0}dB</Text>
-          </View>
-        ))}
-        <Pressable onPress={() => updateSettings({ audioEqualizer: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] })} style={{ marginTop: spacing.sm }}>
-          <Text style={{ color: colors.primary, fontSize: typography.sizes.sm }}>Reset Equalizer</Text>
-        </Pressable>
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-        <Text style={{ color: colors.text, fontSize: typography.sizes.md }}>Bass Boost</Text>
-        <TextInput value={String(settings.bassBoost)} onChangeText={(v) => updateSettings({ bassBoost: Number(v) || 0 })} keyboardType="numeric" style={{ backgroundColor: colors.surfaceVariant, color: colors.text, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.md, width: 60, textAlign: 'right' }} />
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-        <Text style={{ color: colors.text, fontSize: typography.sizes.md }}>Dialogue Boost</Text>
-        <Switch value={settings.dialogueBoost} onValueChange={(v) => updateSettings({ dialogueBoost: v })} trackColor={{ false: colors.surfaceVariant, true: colors.primaryContainer }} thumbColor={settings.dialogueBoost ? colors.primary : colors.textTertiary} />
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-        <Text style={{ color: colors.text, fontSize: typography.sizes.md }}>Loudness Normalization</Text>
-        <Switch value={settings.audioNormalization} onValueChange={(v) => updateSettings({ audioNormalization: v })} trackColor={{ false: colors.surfaceVariant, true: colors.primaryContainer }} thumbColor={settings.audioNormalization ? colors.primary : colors.textTertiary} />
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-        <Text style={{ color: colors.text, fontSize: typography.sizes.md }}>Volume Boost</Text>
-        <TextInput value={String(settings.volumeBoost)} onChangeText={(v) => updateSettings({ volumeBoost: Math.max(1, Math.min(3, Number(v) || 1)) })} keyboardType="numeric" style={{ backgroundColor: colors.surfaceVariant, color: colors.text, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.md, width: 60, textAlign: 'right' }} />
-      </View>
-    </ScrollView>
-  );
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {page === 'menu' && renderMenu()}
@@ -323,7 +249,6 @@ export function SettingsScreen() {
       {page === 'playback' && renderPlayback()}
       {page === 'gestures' && renderGestures()}
       {page === 'subtitles' && renderSubtitles()}
-      {page === 'audio' && renderAudio()}
       {page === 'storage' && <StorageSettings onBack={() => setPage('menu')} />}
       {page === 'about' && <AboutSettings onBack={() => setPage('menu')} />}
     </View>
@@ -455,7 +380,6 @@ function AboutSettings({ onBack }: { onBack: () => void }) {
     { name: 'NativeWind', license: 'MIT', url: 'https://github.com/nativewind/nativewind/blob/main/LICENSE' },
     { name: 'react-native-reanimated', license: 'MIT', url: 'https://github.com/software-mansion/react-native-reanimated/blob/main/LICENSE' },
     { name: 'react-native-mmkv', license: 'MIT', url: 'https://github.com/mrousavy/react-native-mmkv/blob/main/LICENSE' },
-    { name: '@gorhom/bottom-sheet', license: 'MIT', url: 'https://github.com/gorhom/bottom-sheet/blob/master/LICENSE' },
     { name: '@shopify/flash-list', license: 'MIT', url: 'https://github.com/Shopify/flash-list/blob/main/LICENSE' },
   ];
 

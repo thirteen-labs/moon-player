@@ -3,11 +3,6 @@ export type VideoExtension =
   | '.flv' | '.webm' | '.m4v' | '.3gp' | '.ts'
   | '.mts' | '.m2ts' | '.ogv' | '.divx' | '.asf';
 
-export type AudioExtension =
-  | '.mp3' | '.flac' | '.wav' | '.aac' | '.ogg'
-  | '.m4a' | '.wma' | '.opus' | '.alac' | '.aiff'
-  | '.dsf' | '.ape';
-
 export type SubtitleExtension =
   | '.srt' | '.ass' | '.ssa' | '.vtt' | '.sub' | '.idx' | '.pgs';
 
@@ -85,19 +80,4 @@ export interface VideoCollection {
   name: string;
   icon: string;
   filter: (videos: LibraryVideo[]) => LibraryVideo[];
-}
-
-export interface Bookmark {
-  id: string;
-  videoId: string;
-  timestamp: number;
-  label: string;
-  createdAt: number;
-}
-
-export interface SleepTimerState {
-  isActive: boolean;
-  remainingSeconds: number;
-  triggerAt: 'pause' | 'stop';
-  startedAt: number;
 }
