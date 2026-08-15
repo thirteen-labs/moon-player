@@ -1,14 +1,13 @@
 import { View, Text } from 'react-native';
-import { useTheme } from '../theme';
+import { useTheme } from '@/theme';
 
 interface EmptyStateProps {
-  icon: string;
+  icon?: string;
   title: string;
-  message: string;
-  action?: string;
+  message?: string;
 }
 
-export function EmptyState({ icon, title, message }: EmptyStateProps) {
+export function EmptyState({ icon = '🎬', title, message }: EmptyStateProps) {
   const { colors, theme } = useTheme();
   const { spacing, typography } = theme;
 
@@ -18,34 +17,26 @@ export function EmptyState({ icon, title, message }: EmptyStateProps) {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: spacing['2xl'],
+        paddingHorizontal: spacing.xl,
         paddingVertical: spacing['3xl'],
       }}
     >
-      <Text style={{ fontSize: 48, marginBottom: spacing.md, opacity: 0.6 }}>
-        {icon}
-      </Text>
-      <Text
-        style={{
-          color: colors.text,
-          fontSize: typography.sizes.lg,
-          fontWeight: typography.weights.semibold,
-          textAlign: 'center',
-          marginBottom: spacing.xs,
-        }}
-      >
+      <Text style={{ fontSize: 48, marginBottom: spacing.md }}>{icon}</Text>
+      <Text style={{ color: colors.text, fontSize: typography.sizes.lg, fontWeight: typography.weights.bold }}>
         {title}
       </Text>
-      <Text
-        style={{
-          color: colors.textTertiary,
-          fontSize: typography.sizes.sm,
-          textAlign: 'center',
-          lineHeight: 20,
-        }}
-      >
-        {message}
-      </Text>
+      {message ? (
+        <Text
+          style={{
+            color: colors.textSecondary,
+            fontSize: typography.sizes.sm,
+            textAlign: 'center',
+            marginTop: spacing.xs,
+          }}
+        >
+          {message}
+        </Text>
+      ) : null}
     </View>
   );
 }
