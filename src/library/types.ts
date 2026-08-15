@@ -13,6 +13,8 @@ export interface VideoFile {
   size: number;
   extension: VideoExtension;
   modifiedAt: number;
+  /** MediaStore item id (populated when sourced from @obsidian_north/react-native-mediastore). */
+  mediaId?: string;
 }
 
 export interface VideoMetadata {

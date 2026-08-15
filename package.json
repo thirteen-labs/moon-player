@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
-    "@obsidian_north/react-native-mediastore": "^3.2.0",
+    "@obsidian_north/react-native-mediastore": "^3.2.1",
     "@shopify/flash-list": "2.0.2",
     "babel-plugin-module-resolver": "^5.0.3",
     "babel-preset-expo": "~56.0.0",
@@ -20,8 +20,6 @@
     "expo-splash-screen": "~56.0.14",
     "expo-sqlite": "~56.0.5",
     "expo-status-bar": "~56.0.4",
-    "expo-video-metadata": "^1.5.0",
-    "expo-video-thumbnails": "~56.0.3",
     "nativewind": "~4.2.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",

@@ -1,6 +1,7 @@
 import { Scanner } from './Scanner';
 import { MetadataExtractor } from './MetadataExtractor';
 import { ThumbnailService } from './ThumbnailService';
+import { requestPermissions } from '@obsidian_north/react-native-mediastore';
 import { Directory, File } from 'expo-file-system';
 import type {
   VideoFile,
@@ -44,17 +45,14 @@ export class LibraryService {
     const startTime = Date.now();
 
     try {
-      let allFiles: VideoFile[] = [];
+      await requestPermissions();
 
-      for (const uri of rootUris) {
-        const files = await this.scanner.scanDirectory(uri, onProgress);
-        allFiles = allFiles.concat(files);
-      }
+      const allFiles = await this.scanner.scan(rootUris, onProgress);
 
       const metadataResults = await this.metadataExtractor.extractBatch(allFiles, onProgress);
 
       const thumbnails = await this.thumbnailService.generateBatch(
-        allFiles.map((f) => f.uri),
+        allFiles,
         (current, total) => {
           onProgress?.({
             totalFiles: total,
@@ -117,6 +115,7 @@ export class LibraryService {
   }
 
   async fetchAdditionalUris(uris: string[], onProgress?: ScanCallback): Promise<LibraryVideo[]> {
+    await requestPermissions();
     const files = await this.scanner.scanUris(uris, onProgress);
     const metadataResults = await this.metadataExtractor.extractBatch(files, onProgress);
     const added: LibraryVideo[] = [];

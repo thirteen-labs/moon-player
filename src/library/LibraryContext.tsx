@@ -1,7 +1,9 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useMediaChangeEvent, type MediaChangeEvent } from '@obsidian_north/react-native-mediastore';
 import { LibraryService } from './LibraryService';
 import { runMigrations, VideoRepository } from '../database';
+import { useSettings } from '../storage';
 import type { LibraryVideo, ScanProgress, ScanResult } from './types';
 
 export interface LibraryContextValue {
@@ -39,6 +41,12 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
   const [videos, setVideos] = useState<LibraryVideo[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
+  const { settings } = useSettings();
+  const settingsRef = useRef(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+  const rescanTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     async function loadLibrary() {
@@ -84,6 +92,30 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
       await VideoRepository.insert(video);
     }
     return added;
+  }, []);
+
+  // Re-scan when the device media library changes (video added/removed/edited).
+  // Debounced so bursts of change events coalesce into a single rescan.
+  const rescan = useCallback(async () => {
+    if (serviceRef.current.isScanning) return;
+    await scan(settingsRef.current.scanDirectories);
+  }, [scan]);
+
+  const handleMediaChange = useCallback((event: MediaChangeEvent) => {
+    if (event.mediaType !== 'video') return;
+    if (rescanTimer.current) clearTimeout(rescanTimer.current);
+    rescanTimer.current = setTimeout(() => {
+      rescanTimer.current = null;
+      void rescan();
+    }, 1500);
+  }, [rescan]);
+
+  useMediaChangeEvent(handleMediaChange);
+
+  useEffect(() => {
+    return () => {
+      if (rescanTimer.current) clearTimeout(rescanTimer.current);
+    };
   }, []);
 
   const getVideo = useCallback((uri: string): LibraryVideo | undefined => {

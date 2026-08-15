@@ -1,28 +1,27 @@
-import { getThumbnailAsync } from 'expo-video-thumbnails';
+import {
+  getVideoThumbnail,
+  getByUri,
+  type VideoItem,
+} from '@obsidian_north/react-native-mediastore';
 import { MmkvService } from '../storage/MmkvService';
+import type { VideoFile } from './types';
 
 const THUMBNAIL_CACHE_PREFIX = 'thumb_';
 
 export class ThumbnailService {
-  private cacheDir: string;
-
-  constructor(cacheDir: string = '') {
-    this.cacheDir = cacheDir;
-  }
-
-  async generateThumbnail(videoUri: string, time: number = 0): Promise<string | null> {
+  async generateThumbnail(video: VideoFile): Promise<string | null> {
     try {
-      const cached = MmkvService.getString(`${THUMBNAIL_CACHE_PREFIX}${videoUri}`);
+      const cacheKey = `${THUMBNAIL_CACHE_PREFIX}${video.uri}`;
+      const cached = MmkvService.getString(cacheKey);
       if (cached) return cached;
 
-      const result = await getThumbnailAsync(videoUri, {
-        time,
-        quality: 0.5,
-      });
+      const id = await this.resolveId(video);
+      if (!id) return null;
 
-      if (result?.uri) {
-        MmkvService.setString(`${THUMBNAIL_CACHE_PREFIX}${videoUri}`, result.uri);
-        return result.uri;
+      const thumb = await getVideoThumbnail(id);
+      if (thumb) {
+        MmkvService.setString(cacheKey, thumb);
+        return thumb;
       }
 
       return null;
@@ -31,17 +30,27 @@ export class ThumbnailService {
     }
   }
 
+  private async resolveId(video: VideoFile): Promise<string | null> {
+    if (video.mediaId) return video.mediaId;
+    try {
+      const item = (await getByUri(video.uri)) as VideoItem | null;
+      return item?.id ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async generateBatch(
-    uris: string[],
+    videos: VideoFile[],
     onProgress?: (current: number, total: number) => void,
   ): Promise<Map<string, string>> {
     const results = new Map<string, string>();
-    const total = uris.length;
+    const total = videos.length;
 
     for (let i = 0; i < total; i++) {
-      const thumb = await this.generateThumbnail(uris[i]);
+      const thumb = await this.generateThumbnail(videos[i]);
       if (thumb) {
-        results.set(uris[i], thumb);
+        results.set(videos[i].uri, thumb);
       }
       onProgress?.(i + 1, total);
     }

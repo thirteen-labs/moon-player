@@ -1,6 +1,71 @@
-import { Directory, File } from 'expo-file-system';
+import {
+  getVideos,
+  type VideoItem,
+} from '@obsidian_north/react-native-mediastore';
 import type { VideoFile, VideoExtension, ScanCallback } from './types';
-import { isVideoFile } from '../utils/fileExtensions';
+
+// Common storage roots stripped from user-provided absolute paths so they can be
+// matched against MediaStore relative paths (e.g. "Movies/", "DCIM/Camera").
+const STORAGE_ROOTS = [
+  '/storage/emulated/0/',
+  '/storage/emulated/legacy/',
+  '/mnt/sdcard/',
+  '/sdcard/',
+  '/storage/',
+];
+
+function stripStorageRoot(path: string): string {
+  let p = path.replace(/\\/g, '/');
+  for (const root of STORAGE_ROOTS) {
+    if (p.startsWith(root)) {
+      p = p.slice(root.length);
+      break;
+    }
+  }
+  return p.replace(/^\/+/, '').replace(/\/+$/, '').toLowerCase();
+}
+
+function isInFolders(item: VideoItem, folders: string[]): boolean {
+  if (folders.length === 0) return true;
+
+  const rel = (item.relativePath || '')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '')
+    .toLowerCase();
+  const uri = item.uri.toLowerCase();
+
+  return folders.some((folder) => {
+    const target = stripStorageRoot(folder);
+    // Empty target (e.g. root "/" ) means include everything.
+    if (!target) return true;
+    return (
+      rel.startsWith(target) ||
+      target.startsWith(rel) ||
+      uri.includes(target)
+    );
+  });
+}
+
+function extensionFromName(name: string): VideoExtension {
+  const match = /\.([a-z0-9]+)$/i.exec(name);
+  const ext = match ? match[1].toLowerCase() : '';
+  return (`.${ext}` || '.') as VideoExtension;
+}
+
+function toVideoFile(item: VideoItem): VideoFile {
+  const name =
+    item.displayName || item.title || item.uri.split('/').pop() || 'Unknown';
+  return {
+    uri: item.uri,
+    path: item.uri,
+    name,
+    size: item.size,
+    extension: extensionFromName(name),
+    // MediaStore timestamps are in milliseconds.
+    modifiedAt: item.dateModified || item.dateAdded || 0,
+    mediaId: item.id,
+  };
+}
 
 export class Scanner {
   private cancelled = false;
@@ -9,93 +74,75 @@ export class Scanner {
     this.cancelled = true;
   }
 
+  /**
+   * Query the device-wide MediaStore for all videos, then filter by the
+   * configured folders (best-effort relative-path matching).
+   * The MediaStore index makes this far faster than recursive filesystem scans.
+   */
+  async scan(folders: string[], onProgress?: ScanCallback): Promise<VideoFile[]> {
+    this.cancelled = false;
+    try {
+      const items = await getVideos();
+      const filtered = folders.length
+        ? items.filter((item) => isInFolders(item, folders))
+        : items;
+
+      const results: VideoFile[] = [];
+      const total = filtered.length;
+
+      for (let i = 0; i < total; i++) {
+        if (this.cancelled) break;
+        const item = filtered[i];
+        onProgress?.({
+          totalFiles: total,
+          scannedFiles: i + 1,
+          currentPath: item.displayName || item.uri,
+          phase: 'scanning',
+        });
+        results.push(toVideoFile(item));
+      }
+
+      return results;
+    } catch {
+      // Permission denied or query failure — return no videos.
+      return [];
+    }
+  }
+
   async scanDirectory(
     rootUri: string,
     onProgress?: ScanCallback,
   ): Promise<VideoFile[]> {
-    this.cancelled = false;
-    const results: VideoFile[] = [];
-
-    const walk = async (dir: Directory): Promise<void> => {
-      if (this.cancelled) return;
-
-      try {
-        const entries = dir.list();
-
-        for (const entry of entries) {
-          if (this.cancelled) return;
-
-          if (entry instanceof Directory) {
-            await walk(entry);
-          } else if (entry instanceof File && entry.exists) {
-            if (isVideoFile(entry.name)) {
-              results.push({
-                uri: entry.uri,
-                path: entry.uri,
-                name: entry.name,
-                size: entry.size,
-                extension: entry.extension.toLowerCase() as VideoExtension,
-                modifiedAt: entry.lastModified ?? 0,
-              });
-            }
-          }
-        }
-      } catch {
-        // Skip inaccessible directories
-      }
-    };
-
-    const rootDir = new Directory(rootUri);
-    if (!rootDir.exists) return results;
-
-    await walk(rootDir);
-
-    const totalFiles = results.length;
-    for (let i = 0; i < totalFiles; i++) {
-      onProgress?.({
-        totalFiles,
-        scannedFiles: i + 1,
-        currentPath: results[i].uri,
-        phase: 'scanning',
-      });
-    }
-
-    return results;
+    return this.scan([rootUri], onProgress);
   }
 
   async scanUris(uris: string[], onProgress?: ScanCallback): Promise<VideoFile[]> {
     this.cancelled = false;
-    const results: VideoFile[] = [];
-    const totalFiles = uris.length;
+    if (uris.length === 0) return [];
 
-    for (let i = 0; i < totalFiles; i++) {
-      if (this.cancelled) break;
+    const wanted = new Set(uris.map((u) => u.toLowerCase()));
+    try {
+      const items = await getVideos();
+      const matched = items.filter((item) => wanted.has(item.uri.toLowerCase()));
 
-      const fileUri = uris[i];
-      onProgress?.({
-        totalFiles,
-        scannedFiles: i + 1,
-        currentPath: fileUri,
-        phase: 'scanning',
-      });
+      const results: VideoFile[] = [];
+      const total = matched.length;
 
-      try {
-        const file = new File(fileUri);
-        if (file.exists && isVideoFile(file.name)) {
-          results.push({
-            uri: file.uri,
-            path: file.uri,
-            name: file.name,
-            size: file.size,
-            extension: file.extension.toLowerCase() as VideoExtension,
-            modifiedAt: file.lastModified ?? 0,
-          });
-        }
-      } catch {
-        // Skip unreadable files
+      for (let i = 0; i < total; i++) {
+        if (this.cancelled) break;
+        const item = matched[i];
+        onProgress?.({
+          totalFiles: total,
+          scannedFiles: i + 1,
+          currentPath: item.displayName || item.uri,
+          phase: 'scanning',
+        });
+        results.push(toVideoFile(item));
       }
-    }
 
-    return results;
+      return results;
+    } catch {
+      return [];
+    }
   }
 }

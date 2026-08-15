@@ -1,30 +1,45 @@
-import { getVideoInfoAsync, type VideoInfoResult } from 'expo-video-metadata';
+import {
+  getDetailedMetadataByUri,
+  type DetailedMetadata,
+} from '@obsidian_north/react-native-mediastore';
 import type { VideoFile, VideoMetadata, ScanCallback } from './types';
 
-function toMetadata(info: VideoInfoResult): VideoMetadata {
-  const width = info.naturalOrientation === 'Portrait' ? info.height : info.width;
-  const height = info.naturalOrientation === 'Portrait' ? info.width : info.height;
+const HDR_TOKENS = ['HDR', 'HLG', 'DOLBY', 'PQ', 'BT.2020'];
+
+function isHdr(value?: string | null): boolean {
+  if (!value) return false;
+  const v = value.toUpperCase();
+  return HDR_TOKENS.some((token) => v.includes(token));
+}
+
+function toMetadata(det: DetailedMetadata): VideoMetadata {
+  const width = det.video?.width ?? 0;
+  const height = det.video?.height ?? 0;
+  const durationMs = det.durationMs ?? det.video?.durationMs ?? 0;
 
   return {
-    duration: info.duration,
+    // DetailedMetadata durations are in milliseconds; the app expects seconds.
+    duration: durationMs / 1000,
     width,
     height,
-    codec: info.codec,
-    bitrate: info.bitRate,
-    frameRate: info.fps,
-    displayAspectRatio: `${width}:${height}`,
-    isHDR: info.isHDR ?? false,
-    audioCodec: info.audioCodec,
-    audioChannels: info.audioChannels,
-    audioSampleRate: info.audioSampleRate,
+    codec: det.video?.codec ?? det.video?.codecMime ?? '',
+    bitrate: det.video?.bitrate ?? 0,
+    frameRate: det.video?.frameRate ?? 0,
+    displayAspectRatio: width && height ? `${width}:${height}` : '',
+    isHDR:
+      isHdr(det.video?.colorTransfer) || isHdr(det.video?.colorStandard),
+    audioCodec: det.audio?.codec ?? det.audio?.codecMime ?? '',
+    audioChannels: det.audio?.channels ?? 0,
+    audioSampleRate: det.audio?.sampleRate ?? 0,
   };
 }
 
 export class MetadataExtractor {
   async extract(file: VideoFile): Promise<VideoMetadata | null> {
     try {
-      const info = await getVideoInfoAsync(file.uri);
-      return toMetadata(info);
+      const det = await getDetailedMetadataByUri(file.uri);
+      if (!det) return null;
+      return toMetadata(det);
     } catch {
       return null;
     }
