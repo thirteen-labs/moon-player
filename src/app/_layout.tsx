@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SettingsProvider } from '@/storage';
 import { ThemeProvider, useTheme } from '@/theme';
 import { LibraryProvider } from '@/library';
@@ -29,14 +30,16 @@ function AppContent() {
 
 export default function RootLayout() {
   return (
-    <SettingsProvider>
-      <ThemeProvider>
-        <LibraryProvider>
-          <PlayerProvider>
-            <AppContent />
-          </PlayerProvider>
-        </LibraryProvider>
-      </ThemeProvider>
-    </SettingsProvider>
+    <SafeAreaProvider>
+      <SettingsProvider>
+        <ThemeProvider>
+          <LibraryProvider>
+            <PlayerProvider>
+              <AppContent />
+            </PlayerProvider>
+          </LibraryProvider>
+        </ThemeProvider>
+      </SettingsProvider>
+    </SafeAreaProvider>
   );
 }

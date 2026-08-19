@@ -1,4 +1,4 @@
-import { View, Text, Pressable, Platform } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/theme';
@@ -41,7 +41,7 @@ export function TopBar({
   return (
     <View
       style={{
-        paddingTop: Platform.OS === 'ios' ? insets.top : spacing.md,
+        paddingTop: insets.top || spacing.md,
         paddingHorizontal: spacing.md,
         paddingBottom: spacing.sm,
         flexDirection: 'row',

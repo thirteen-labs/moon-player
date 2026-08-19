@@ -47,6 +47,7 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
     settingsRef.current = settings;
   }, [settings]);
   const rescanTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didAutoScan = useRef(false);
 
   useEffect(() => {
     async function loadLibrary() {
@@ -59,6 +60,20 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
     }
     loadLibrary();
   }, []);
+
+  // Auto-fetch/index videos on first launch so the library fills without a
+  // manual scan. Scans the configured directories (or the whole device when
+  // none are configured). Debounced via the in-flight scan guard.
+  useEffect(() => {
+    if (didAutoScan.current) return;
+    didAutoScan.current = true;
+    const timer = setTimeout(() => {
+      if (!serviceRef.current.isScanning) {
+        void scan(settingsRef.current.scanDirectories);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [scan]);
 
   const scan = useCallback(async (rootUris: string[]): Promise<ScanResult> => {
     setIsScanning(true);
