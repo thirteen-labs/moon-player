@@ -2,32 +2,25 @@ import { Platform } from 'react-native';
 
 type PiPStateListener = (isActive: boolean) => void;
 
+/**
+ * Holds the native picture-in-picture state. The actual enter/exit commands are
+ * issued on the <Video> ref (`enterPictureInPicture` / `exitPictureInPicture`);
+ * this service only mirrors the truth reported by the native
+ * `onPictureInPictureStatusChanged` event so the UI stays in sync.
+ */
 export class PiPService {
   private _isActive: boolean = false;
   private listeners: Set<PiPStateListener> = new Set();
 
-  async enterPiP(videoRef: unknown): Promise<boolean> {
-    if (!this.isPiPAvailable()) return false;
-
-    try {
-      if (Platform.OS === 'android') {
-        return await this.enterAndroidPiP(videoRef);
-      } else if (Platform.OS === 'ios') {
-        return await this.enterIOSPiP(videoRef);
-      }
-    } catch {
-      return false;
-    }
-    return false;
-  }
-
-  exitPiP(): void {
-    if (!this._isActive) return;
-    this._isActive = false;
-    this.notifyListeners(false);
+  setActive(active: boolean): void {
+    if (this._isActive === active) return;
+    this._isActive = active;
+    this.notifyListeners(active);
   }
 
   isPiPAvailable(): boolean {
+    // PiP is supported on Android (with the Expo Android PiP config plugin) and
+    // iOS (AVKit). We cannot introspect device capability at runtime reliably.
     return Platform.OS === 'android' || Platform.OS === 'ios';
   }
 
@@ -40,35 +33,13 @@ export class PiPService {
     return () => this.listeners.delete(listener);
   }
 
-  private async enterAndroidPiP(videoRef: unknown): Promise<boolean> {
-    try {
-      const ref = videoRef as { presentFullscreenPlayer?: () => void; dismissFullscreenPlayer?: () => void } | null;
-      if (ref?.presentFullscreenPlayer) {
-        ref.presentFullscreenPlayer();
-        this._isActive = true;
-        this.notifyListeners(true);
-        return true;
-      }
-    } catch {}
-    return false;
-  }
-
-  private async enterIOSPiP(videoRef: unknown): Promise<boolean> {
-    try {
-      const ref = videoRef as { presentFullscreenPlayer?: () => void; dismissFullscreenPlayer?: () => void } | null;
-      if (ref?.presentFullscreenPlayer) {
-        ref.presentFullscreenPlayer();
-        this._isActive = true;
-        this.notifyListeners(true);
-        return true;
-      }
-    } catch {}
-    return false;
-  }
-
   private notifyListeners(isActive: boolean): void {
     for (const listener of this.listeners) {
-      try { listener(isActive); } catch {}
+      try {
+        listener(isActive);
+      } catch {
+        // ignore listener errors
+      }
     }
   }
 }

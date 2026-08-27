@@ -1,24 +1,38 @@
 import type { MediaEngineInterface } from './types';
+import { Platform } from 'react-native';
 
 export type { MediaEngineInterface } from './types';
 
 interface VideoRefMethods {
   resume?: () => void;
   pause?: () => void;
-  stop?: () => void;
-  seek?: (seconds: number) => void;
-  setRate?: (rate: number) => void;
+  seek?: (seconds: number, tolerance?: number) => void;
   setVolume?: (volume: number) => void;
-  setMuted?: (muted: boolean) => void;
-  setSelectedAudioTrack?: (track: { type: string; value: number }) => void;
-  setSelectedTextTrack?: (track: { type: string; value: number } | { type: 'disabled' }) => void;
   presentFullscreenPlayer?: () => void;
   dismissFullscreenPlayer?: () => void;
+  setFullScreen?: (fullScreen: boolean) => void;
+  enterPictureInPicture?: () => void;
+  exitPictureInPicture?: () => void;
+  getCurrentPosition?: () => Promise<number>;
 }
 
+/**
+ * Single imperative command surface over the native <Video> ref.
+ *
+ * NOTE: react-native-video v6 exposes only a subset of controls imperatively.
+ * The following are PROP-driven on the <Video> element and therefore handled by
+ * the player component, NOT this engine:
+ *   - playback rate (prop `rate`)
+ *   - muted (prop `muted`)
+ *   - audio/text track selection (props `selectedAudioTrack` / `selectedTextTrack`)
+ * Those methods below are intentionally no-ops so callers can route every command
+ * through the engine without special-casing; the prop-driven state still applies.
+ */
 export function createMediaEngine(videoRef: React.RefObject<unknown>): MediaEngineInterface {
   return {
     load(_src: { uri: string; isNetwork?: boolean }) {
+      // Loading is driven by the <Video source={...}> prop in the player screen,
+      // which is the supported path in react-native-video v6 (no imperative load).
     },
 
     play() {
@@ -30,32 +44,28 @@ export function createMediaEngine(videoRef: React.RefObject<unknown>): MediaEngi
     },
 
     stop() {
-      getRef(videoRef)?.stop?.();
+      // react-native-video v6 has no imperative stop(); releasing the player is
+      // achieved by unmounting the <Video>. Pause defensively as a best effort.
+      getRef(videoRef)?.pause?.();
     },
 
     seek(seconds: number) {
       getRef(videoRef)?.seek?.(seconds);
     },
 
-    setRate(rate: number) {
-      getRef(videoRef)?.setRate?.(rate);
-    },
+    // Rate is applied via the `rate` prop (see player.tsx).
+    setRate(_rate: number) {},
 
     setVolume(volume: number) {
       getRef(videoRef)?.setVolume?.(volume);
     },
 
-    setMuted(muted: boolean) {
-      getRef(videoRef)?.setMuted?.(muted);
-    },
+    // Muted is applied via the `muted` prop (see player.tsx).
+    setMuted(_muted: boolean) {},
 
-    setSelectedAudioTrack(index: number) {
-      getRef(videoRef)?.setSelectedAudioTrack?.({ type: 'index', value: index });
-    },
-
-    setSelectedTextTrack(index: number) {
-      getRef(videoRef)?.setSelectedTextTrack?.(index >= 0 ? { type: 'index', value: index } : { type: 'disabled' });
-    },
+    // Audio/text track selection is applied via props (see player.tsx).
+    setSelectedAudioTrack(_index: number) {},
+    setSelectedTextTrack(_index: number) {},
 
     presentFullscreen() {
       getRef(videoRef)?.presentFullscreenPlayer?.();
@@ -66,15 +76,18 @@ export function createMediaEngine(videoRef: React.RefObject<unknown>): MediaEngi
     },
 
     enterPiP() {
-      getRef(videoRef)?.presentFullscreenPlayer?.();
+      getRef(videoRef)?.enterPictureInPicture?.();
     },
 
     exitPiP() {
-      getRef(videoRef)?.dismissFullscreenPlayer?.();
+      getRef(videoRef)?.exitPictureInPicture?.();
     },
 
     isPiPAvailable() {
-      return true;
+      // PiP requires OS support; on Android the activity must opt-in via the
+      // Expo config plugin, on iOS via AVKit. We cannot introspect at runtime
+      // reliably, so we report platform capability as a best-effort gate.
+      return Platform.OS === 'android' || Platform.OS === 'ios';
     },
 
     getNativeRef() {
@@ -82,6 +95,7 @@ export function createMediaEngine(videoRef: React.RefObject<unknown>): MediaEngi
     },
 
     destroy() {
+      // Nothing to release here; the <Video> unmount handles native teardown.
     },
   };
 }

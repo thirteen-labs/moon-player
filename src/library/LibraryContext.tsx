@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useMediaChangeEvent, type MediaChangeEvent } from '@obsidian_north/react-native-mediastore';
+import { useMediaChangeEvent, checkPermissions, requestPermissions, type MediaChangeEvent } from '@obsidian_north/react-native-mediastore';
 import { LibraryService } from './LibraryService';
 import { runMigrations, VideoRepository } from '../database';
 import { useSettings } from '../storage';
@@ -63,18 +63,8 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
 
   // Auto-fetch/index videos on first launch so the library fills without a
   // manual scan. Scans the configured directories (or the whole device when
-  // none are configured). Debounced via the in-flight scan guard.
-  useEffect(() => {
-    if (didAutoScan.current) return;
-    didAutoScan.current = true;
-    const timer = setTimeout(() => {
-      if (!serviceRef.current.isScanning) {
-        void scan(settingsRef.current.scanDirectories);
-      }
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [scan]);
-
+  // none are configured). Only runs once the media permission is granted;
+  // otherwise it relies on the user granting via the manual "Scan Device" action.
   const scan = useCallback(async (rootUris: string[]): Promise<ScanResult> => {
     setIsScanning(true);
     setScanProgress(null);
@@ -99,6 +89,27 @@ export function LibraryProvider({ children }: LibraryProviderProps) {
       setScanProgress(null);
     }
   }, []);
+
+  useEffect(() => {
+    if (didAutoScan.current) return;
+    didAutoScan.current = true;
+
+    (async () => {
+      try {
+        const status = await checkPermissions();
+        const granted = status.granted
+          ? true
+          : (await requestPermissions()).granted;
+        if (!granted) return;
+
+        if (!serviceRef.current.isScanning) {
+          await scan(settingsRef.current.scanDirectories);
+        }
+      } catch (e) {
+        console.warn('[Library] auto-scan failed:', e);
+      }
+    })();
+  }, [scan]);
 
   const addUris = useCallback(async (uris: string[]): Promise<LibraryVideo[]> => {
     const added = await serviceRef.current.fetchAdditionalUris(uris);

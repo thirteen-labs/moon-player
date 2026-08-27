@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { lockAsync, OrientationLock } from 'expo-screen-orientation';
 import { SettingsProvider } from '@/storage';
 import { ThemeProvider, useTheme } from '@/theme';
 import { LibraryProvider } from '@/library';
@@ -29,6 +31,11 @@ function AppContent() {
 }
 
 export default function RootLayout() {
+  // Keep the app portrait by default; the player unlocks landscape in fullscreen.
+  useEffect(() => {
+    lockAsync(OrientationLock.PORTRAIT_UP).catch(() => {});
+  }, []);
+
   return (
     <SafeAreaProvider>
       <SettingsProvider>

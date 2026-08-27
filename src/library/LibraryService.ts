@@ -49,19 +49,32 @@ export class LibraryService {
 
       const allFiles = await this.scanner.scan(rootUris, onProgress);
 
-      const metadataResults = await this.metadataExtractor.extractBatch(allFiles, onProgress);
+      // Metadata/thumbnail generation are best-effort: a failure in either must
+      // not abort the whole scan and leave the library empty. Fall back to
+      // empty results so videos are still indexed.
+      let metadataResults = new Map<string, LibraryVideo['metadata']>();
+      try {
+        metadataResults = await this.metadataExtractor.extractBatch(allFiles, onProgress);
+      } catch (e) {
+        console.warn('[LibraryService] metadata extraction failed, continuing without it:', e);
+      }
 
-      const thumbnails = await this.thumbnailService.generateBatch(
-        allFiles,
-        (current, total) => {
-          onProgress?.({
-            totalFiles: total,
-            scannedFiles: current,
-            currentPath: 'Generating thumbnails...',
-            phase: 'extracting',
-          });
-        },
-      );
+      let thumbnails = new Map<string, string>();
+      try {
+        thumbnails = await this.thumbnailService.generateBatch(
+          allFiles,
+          (current, total) => {
+            onProgress?.({
+              totalFiles: total,
+              scannedFiles: current,
+              currentPath: 'Generating thumbnails...',
+              phase: 'extracting',
+            });
+          },
+        );
+      } catch (e) {
+        console.warn('[LibraryService] thumbnail generation failed, continuing without it:', e);
+      }
 
       const added: LibraryVideo[] = [];
       const now = Date.now();

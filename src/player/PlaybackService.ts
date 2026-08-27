@@ -3,6 +3,7 @@ import type { LibraryVideo } from '../library/types';
 
 export interface PlaybackStateSnapshot {
   state: PlaybackState;
+  buffering: boolean;
   currentVideo: LibraryVideo | null;
   queue: LibraryVideo[];
   currentIndex: number;
@@ -27,12 +28,18 @@ export class PlaybackService {
   private _volume: number = 1.0;
   private _isMuted: boolean = false;
   private _playCount: number = 0;
+  private _buffering: boolean = false;
   private listeners: Set<PlaybackListener> = new Set();
   private positionSaveInterval: ReturnType<typeof setInterval> | null = null;
   private onPositionSave: ((uri: string, position: number) => void) | null = null;
+  private onComplete: ((uri: string) => void) | null = null;
 
   setOnPositionSave(callback: (uri: string, position: number) => void): void {
     this.onPositionSave = callback;
+  }
+
+  setOnComplete(callback: (uri: string) => void): void {
+    this.onComplete = callback;
   }
 
   get snapshot(): PlaybackStateSnapshot {
@@ -46,6 +53,7 @@ export class PlaybackService {
       playbackSpeed: this._playbackSpeed,
       volume: this._volume,
       isMuted: this._isMuted,
+      buffering: this._buffering,
       playCount: this._playCount,
     };
   }
@@ -53,6 +61,7 @@ export class PlaybackService {
   playVideo(video: LibraryVideo, customQueue?: LibraryVideo[]): void {
     this._currentVideo = video;
     this._state = 'loading';
+    this._buffering = false;
     this._position = video.resumePosition || 0;
     this._duration = video.metadata?.duration || 0;
 
@@ -137,6 +146,7 @@ export class PlaybackService {
       this._position = this._currentVideo.resumePosition || 0;
       this._duration = this._currentVideo.metadata?.duration || 0;
       this._state = 'loading';
+      this._buffering = false;
       this.notify();
       return true;
     }
@@ -154,6 +164,7 @@ export class PlaybackService {
       this._position = this._currentVideo.resumePosition || 0;
       this._duration = this._currentVideo.metadata?.duration || 0;
       this._state = 'loading';
+      this._buffering = false;
       this.notify();
       return true;
     }
@@ -224,13 +235,9 @@ export class PlaybackService {
   }
 
   setBuffering(isBuffering: boolean): void {
-    if (isBuffering && this._state === 'playing') {
-      this._state = 'buffering';
-      this.notify();
-    } else if (!isBuffering && this._state === 'buffering') {
-      this._state = 'playing';
-      this.notify();
-    }
+    if (this._buffering === isBuffering) return;
+    this._buffering = isBuffering;
+    this.notify();
   }
 
   setError(): void {
@@ -241,12 +248,18 @@ export class PlaybackService {
   onLoad(duration: number): void {
     this._duration = duration;
     this._state = 'playing';
+    this._buffering = false;
+    this.startPositionSaveInterval();
     this.notify();
   }
 
   onEnd(): void {
     this.stopPositionSaveInterval();
-    this.savePosition();
+    const uri = this._currentVideo?.file.uri;
+    // Notify completion so history can mark played and clear resume position.
+    if (uri && this.onComplete) {
+      this.onComplete(uri);
+    }
     this.next();
     this.notify();
   }
