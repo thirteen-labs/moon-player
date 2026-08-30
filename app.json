@@ -26,7 +26,8 @@
           "enableAndroidPictureInPicture": true,
           "enableBackgroundAudio": true
         }
-      ]
+      ],
+      "expo-image"
     ],
     "ios": {
       "supportsTablet": true,
