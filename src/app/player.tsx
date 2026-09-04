@@ -4,8 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { lockAsync, OrientationLock } from 'expo-screen-orientation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { readAsStringAsync } from 'expo-file-system';
-import Video, { SelectedTrackType, type VideoRef } from 'react-native-video';
+import { readFileContents } from '@obsidian_north/react-native-mediastore';
+import { Video } from 'obsidian-media-player';
+import type { PlaybackState } from 'obsidian-media-player';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/theme';
 import { usePlayer } from '@/player';
@@ -47,8 +48,7 @@ export default function PlayerRoute() {
 
   const {
     currentVideo, isPlaying, buffering, position, duration,
-    videoRef, togglePlay, seekTo, onProgress, onLoad, onEnd, onError,
-    onBuffer, onPlaybackStateChanged, onPictureInPictureStatusChanged,
+    videoRef, togglePlay, seekTo, onProgress, onStateChange, onError,
     playbackSpeed, setPlaybackSpeed, volume, isMuted, toggleMute, setVolume,
     next, previous, currentIndex, queue,
     audioTracks, selectedAudioTrack, setSelectedAudioTrack,
@@ -106,17 +106,44 @@ export default function PlayerRoute() {
 
   const showControls = useCallback(() => setControlsVisible(true), []);
 
-  const handleLoad = useCallback((data: { duration: number }) => {
-    onLoad(data);
-    setLocalVolume(volume);
-    // A new video loaded — drop any previously selected external subtitle.
-    setExternalTrack(null);
-    setExternalUri(null);
-    if (position > 1) {
+  // obsidian-media-player state handler — replaces react-native-video onLoad/onBuffer/onPlaybackStateChanged/onError/onEnd
+  const handleStateChange = useCallback((state: PlaybackState) => {
+    onStateChange(state);
+    // When ready, seek to resume position if needed
+    if (state.status === 'ready' && position > 1) {
       const target = position;
       setTimeout(() => videoRef.current?.seek(target), 60);
     }
-  }, [onLoad, position, volume, videoRef]);
+    setLocalVolume(volume);
+    // Drop external subtitle when a new source becomes ready
+    if (state.status === 'ready' || state.status === 'loading') {
+      // handled in onStateChange via PlayerContext
+    }
+  }, [onStateChange, position, volume, videoRef]);
+
+  const handleProgress = useCallback((pos: number, dur: number) => {
+    onProgress(pos, dur);
+  }, [onProgress]);
+
+  const handleEvent = useCallback((event: { type: string; state?: PlaybackState; payload?: Record<string, unknown> }) => {
+    if (event.type === 'error') {
+      const msg = (event.payload?.message as string) || event.state?.error || 'Video error';
+      onError(new Error(msg));
+    } else if (event.type === 'ended') {
+      // ended is also emitted via state.status === 'ended' in onStateChange; handled there
+    }
+  }, [onError]);
+
+  // Keep localVolume in sync when global volume changes externally
+  useEffect(() => { setLocalVolume(volume); }, [volume]); // eslint-disable-line react-hooks/set-state-in-effect
+
+  // Reset external track when video changes
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    setExternalTrack(null);
+    setExternalUri(null);
+  }, [currentVideo?.id]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSkip = useCallback((seconds: number) => {
     seekTo(position + seconds);
@@ -138,7 +165,14 @@ export default function PlayerRoute() {
   const loadExternalSubtitle = useCallback(async (sub: SubtitleFile) => {
     if (externalUri === sub.uri && externalTrack) return;
     try {
-      const content = await readAsStringAsync(sub.uri, { encoding: 'utf8' });
+      // Use latest mediastore file API for reading subtitle contents.
+      // Falls back to expo-file-system if mediastore returns null (e.g. file://).
+      let content: string | null = await readFileContents(sub.path || sub.uri);
+      if (content == null) {
+        const { readAsStringAsync } = await import('expo-file-system');
+        content = await readAsStringAsync(sub.uri, { encoding: 'utf8' });
+      }
+      if (content == null) return;
       const track = parseSubtitleContent(content, sub.extension);
       if (track) {
         setExternalTrack({ ...track, title: sub.name });
@@ -172,8 +206,9 @@ export default function PlayerRoute() {
   const retry = useCallback(() => {
     if (!currentVideo) return;
     try {
-      videoRef.current?.setSource?.({ uri: currentVideo.file.uri });
-      videoRef.current?.resume?.();
+      // obsidian-media-player: replay via play() after seeking to 0
+      videoRef.current?.seek(0);
+      videoRef.current?.play();
     } catch {
       // ignore
     }
@@ -241,8 +276,8 @@ export default function PlayerRoute() {
 
   const longPress = Gesture.LongPress()
     .minDuration(500)
-    .onStart(() => { setLongPressSpeed(true); setPlaybackSpeed(2.0); })
-    .onEnd(() => { setLongPressSpeed(false); });
+    .onStart(() => { setLongPressSpeed(true); videoRef.current?.setRate(2.0); })
+    .onEnd(() => { setLongPressSpeed(false); videoRef.current?.setRate(playbackSpeed); });
 
   const pinch = Gesture.Pinch()
     .onEnd((e) => {
@@ -255,12 +290,12 @@ export default function PlayerRoute() {
 
   if (!currentVideo) return null;
 
-  const videoSource = { uri: currentVideo.file.uri };
+  const videoSource = { uri: currentVideo.file.uri, type: 'file' as const, cacheable: false };
   const shownPosition = scrubbing ? scrubPosition : position;
   const progress = duration > 0 ? shownPosition / duration : 0;
   const canPrev = currentIndex > 0;
   const canNext = currentIndex >= 0 && currentIndex < queue.length - 1;
-  const backgroundAudio = isBackgroundAudioEnabled || isAudioOnly;
+  // Background audio is managed by obsidian native AudioSession/MediaSession
 
   // Unified track option lists for the sheet.
   const audioOptions: TrackOption[] = [
@@ -292,36 +327,23 @@ export default function PlayerRoute() {
     })),
   ];
 
-  const audioTrackProp =
-    selectedAudioTrack >= 0
-      ? { type: SelectedTrackType.INDEX, value: selectedAudioTrack }
-      : { type: SelectedTrackType.SYSTEM };
-
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       <GestureDetector gesture={composed}>
         <View style={fullscreen ? { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } : { flex: 1 }}>
           <Video
-            ref={videoRef as React.RefObject<VideoRef>}
+            ref={videoRef}
             source={videoSource}
             style={{ flex: 1 }}
             resizeMode={resizeMode}
             paused={!isPlaying}
-            rate={longPressSpeed ? 2.0 : playbackSpeed}
-            volume={isMuted ? 0 : localVolume}
             muted={isMuted}
-            playInBackground={backgroundAudio}
-            playWhenInactive={backgroundAudio}
-            onLoad={handleLoad}
-            onProgress={onProgress}
-            onEnd={onEnd}
-            onError={(e) => onError(new Error(e.error?.errorString ?? 'Video error'))}
-            onBuffer={onBuffer}
-            onPlaybackStateChanged={onPlaybackStateChanged}
-            onPictureInPictureStatusChanged={onPictureInPictureStatusChanged}
-            progressUpdateInterval={250}
-            selectedAudioTrack={audioTrackProp}
-            selectedTextTrack={selectedTextTrack >= 0 ? { type: SelectedTrackType.INDEX, value: selectedTextTrack } : undefined}
+            volume={localVolume}
+            rate={longPressSpeed ? 2.0 : playbackSpeed}
+            repeat={false}
+            onStateChange={handleStateChange}
+            onProgress={handleProgress}
+            onEvent={handleEvent}
           />
           <SubtitleOverlay track={externalTrack ?? undefined} />
 

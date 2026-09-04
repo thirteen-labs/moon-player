@@ -1,93 +1,85 @@
 import type { MediaEngineInterface } from './types';
 import { Platform } from 'react-native';
+import type { VideoHandle } from 'obsidian-media-player';
 
 export type { MediaEngineInterface } from './types';
 
-interface VideoRefMethods {
-  resume?: () => void;
-  pause?: () => void;
-  seek?: (seconds: number, tolerance?: number) => void;
-  setVolume?: (volume: number) => void;
-  presentFullscreenPlayer?: () => void;
-  dismissFullscreenPlayer?: () => void;
-  setFullScreen?: (fullScreen: boolean) => void;
-  enterPictureInPicture?: () => void;
-  exitPictureInPicture?: () => void;
-  getCurrentPosition?: () => Promise<number>;
-}
+type ObsidianVideoHandle = VideoHandle;
 
 /**
- * Single imperative command surface over the native <Video> ref.
+ * Single imperative command surface over the obsidian-media-player <Video> ref.
  *
- * NOTE: react-native-video v6 exposes only a subset of controls imperatively.
- * The following are PROP-driven on the <Video> element and therefore handled by
- * the player component, NOT this engine:
- *   - playback rate (prop `rate`)
- *   - muted (prop `muted`)
- *   - audio/text track selection (props `selectedAudioTrack` / `selectedTextTrack`)
- * Those methods below are intentionally no-ops so callers can route every command
- * through the engine without special-casing; the prop-driven state still applies.
+ * obsidian-media-player exposes VideoHandle with:
+ *   play / pause / stop / seek(seconds) / setRate / setVolume / setMuted / setResizeMode / getState
+ *
+ * Legacy react-native-video methods (presentFullscreenPlayer etc.) are not supported;
+ * those callers fall back to no-ops. PiP is not yet implemented in obsidian 0.1
+ * and is also a no-op (returns false for isPiPAvailable).
  */
-export function createMediaEngine(videoRef: React.RefObject<unknown>): MediaEngineInterface {
+export function createMediaEngine(videoRef: React.RefObject<ObsidianVideoHandle | null>): MediaEngineInterface {
   return {
     load(_src: { uri: string; isNetwork?: boolean }) {
-      // Loading is driven by the <Video source={...}> prop in the player screen,
-      // which is the supported path in react-native-video v6 (no imperative load).
+      // Loading is driven by the <Video source={...}> prop in obsidian-media-player.
     },
 
     play() {
-      getRef(videoRef)?.resume?.();
+      getRef(videoRef)?.play();
     },
 
     pause() {
-      getRef(videoRef)?.pause?.();
+      getRef(videoRef)?.pause();
     },
 
     stop() {
-      // react-native-video v6 has no imperative stop(); releasing the player is
-      // achieved by unmounting the <Video>. Pause defensively as a best effort.
-      getRef(videoRef)?.pause?.();
+      getRef(videoRef)?.stop();
     },
 
     seek(seconds: number) {
-      getRef(videoRef)?.seek?.(seconds);
+      getRef(videoRef)?.seek(seconds);
     },
 
-    // Rate is applied via the `rate` prop (see player.tsx).
-    setRate(_rate: number) {},
+    setRate(rate: number) {
+      getRef(videoRef)?.setRate(rate);
+    },
 
     setVolume(volume: number) {
-      getRef(videoRef)?.setVolume?.(volume);
+      getRef(videoRef)?.setVolume(volume);
     },
 
-    // Muted is applied via the `muted` prop (see player.tsx).
-    setMuted(_muted: boolean) {},
+    setMuted(muted: boolean) {
+      getRef(videoRef)?.setMuted(muted);
+    },
 
-    // Audio/text track selection is applied via props (see player.tsx).
-    setSelectedAudioTrack(_index: number) {},
-    setSelectedTextTrack(_index: number) {},
+    setSelectedAudioTrack(_index: number) {
+      // obsidian-media-player 0.1 does not expose audio track selection; track metadata
+      // is handled at the queue level. No-op for compatibility.
+    },
+
+    setSelectedTextTrack(_index: number) {
+      // External subtitles are rendered via SubtitleOverlay, not native text tracks.
+    },
 
     presentFullscreen() {
-      getRef(videoRef)?.presentFullscreenPlayer?.();
+      // Not supported in obsidian 0.1 — handled via app fullscreen state + orientation lock.
     },
 
     dismissFullscreen() {
-      getRef(videoRef)?.dismissFullscreenPlayer?.();
+      // No-op
     },
 
     enterPiP() {
-      getRef(videoRef)?.enterPictureInPicture?.();
+      // PiP not yet implemented in obsidian-media-player 0.1 (roadmap: Cast/Background).
     },
 
     exitPiP() {
-      getRef(videoRef)?.exitPictureInPicture?.();
+      // No-op
     },
 
     isPiPAvailable() {
-      // PiP requires OS support; on Android the activity must opt-in via the
-      // Expo config plugin, on iOS via AVKit. We cannot introspect at runtime
-      // reliably, so we report platform capability as a best-effort gate.
-      return Platform.OS === 'android' || Platform.OS === 'ios';
+      // obsidian-media-player 0.1 does not yet wire PiP; report false.
+      // Keep platform check for future when ExoPlayer PiP + AVPlayerLayer PiP lands.
+      void Platform.OS;
+      return false;
     },
 
     getNativeRef() {
@@ -95,13 +87,11 @@ export function createMediaEngine(videoRef: React.RefObject<unknown>): MediaEngi
     },
 
     destroy() {
-      // Nothing to release here; the <Video> unmount handles native teardown.
+      // <Video> unmount handles teardown; nothing to release.
     },
   };
 }
 
-function getRef(videoRef: React.RefObject<unknown>): VideoRefMethods | null {
-  const ref = videoRef.current;
-  if (ref && typeof ref === 'object') return ref as VideoRefMethods;
-  return null;
+function getRef(videoRef: React.RefObject<ObsidianVideoHandle | null>): ObsidianVideoHandle | null {
+  return videoRef.current ?? null;
 }

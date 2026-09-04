@@ -1,12 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { VideoRef, TextTrack, AudioTrack } from 'react-native-video';
+import type { VideoHandle, PlaybackState as ObsidianPlaybackState } from 'obsidian-media-player';
 import type { LibraryVideo } from '../library/types';
 import { LibraryContext } from '../library/LibraryContext';
 import { PlaybackService } from './PlaybackService';
 import { createMediaEngine } from './MediaEngine';
 import { pipService } from '../services/PiPService';
 import type { PlaybackState } from './types';
+import { mapObsidianStatus } from './types';
+
+// Legacy track types kept for UI compatibility — obsidian 0.1 does not emit them
+export interface AudioTrack { language?: string; title?: string }
+export interface TextTrack { language?: string; title?: string }
 
 export interface PlayerContextValue {
   currentVideo: LibraryVideo | null;
@@ -19,7 +24,7 @@ export interface PlayerContextValue {
   playbackSpeed: number;
   volume: number;
   isMuted: boolean;
-  videoRef: React.RefObject<VideoRef | null>;
+  videoRef: React.RefObject<VideoHandle | null>;
   playVideo: (video: LibraryVideo, queue?: LibraryVideo[]) => void;
   togglePlay: () => void;
   seekTo: (seconds: number) => void;
@@ -33,10 +38,13 @@ export interface PlayerContextValue {
   removeFromQueue: (id: string) => void;
   moveQueueItem: (id: string, direction: 'up' | 'down') => void;
   clearQueue: () => void;
-  onProgress: (progress: { currentTime: number; playableDuration: number; seekableDuration: number }) => void;
+  // obsidian-media-player unified handlers
+  onProgress: (position: number, duration: number) => void;
+  onStateChange: (state: ObsidianPlaybackState) => void;
+  onError: (error: Error) => void;
+  // Legacy compatibility shims (mapped from onStateChange)
   onLoad: (data: { duration: number; audioTracks?: AudioTrack[]; textTracks?: TextTrack[]; currentTime?: number }) => void;
   onEnd: () => void;
-  onError: (error: Error) => void;
   onBuffer: (data: { isBuffering: boolean }) => void;
   onPlaybackStateChanged: (data: { isPlaying: boolean; isSeeking: boolean }) => void;
   onPictureInPictureStatusChanged: (data: { isActive: boolean }) => void;
@@ -64,7 +72,7 @@ const defaultContext: PlayerContextValue = {
   setPlaybackSpeed: () => {}, setVolume: () => {}, toggleMute: () => {},
   next: () => {}, previous: () => {}, setQueue: () => {}, addToQueue: () => {},
   removeFromQueue: () => {}, moveQueueItem: () => {}, clearQueue: () => {},
-  onProgress: () => {}, onLoad: () => {}, onEnd: () => {}, onError: () => {},
+  onProgress: () => {}, onStateChange: () => {}, onLoad: () => {}, onEnd: () => {}, onError: () => {},
   onBuffer: () => {}, onPlaybackStateChanged: () => {}, onPictureInPictureStatusChanged: () => {},
   audioTracks: [], selectedAudioTrack: -1, setSelectedAudioTrack: () => {},
   textTracks: [], selectedTextTrack: -1, setSelectedTextTrack: () => {},
@@ -85,8 +93,8 @@ interface PlayerProviderProps {
 
 export function PlayerProvider({ children }: PlayerProviderProps) {
   const playbackServiceRef = useRef<PlaybackService>(new PlaybackService());
-  // Single imperative command surface over the native <Video> (see MediaEngine).
-  const mediaEngineRef = useRef(createMediaEngine({ current: null }));
+  // Single imperative command surface over the native <Video> (obsidian-media-player).
+  const mediaEngineRef = useRef(createMediaEngine({ current: null } as React.RefObject<VideoHandle | null>));
   const [currentVideo, setCurrentVideo] = useState<LibraryVideo | null>(null);
   const [queue, setQueueState] = useState<LibraryVideo[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
@@ -105,11 +113,11 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const [selectedAudioTrack, setSelectedAudioTrack] = useState<number>(-1);
   const [textTracks, setTextTracks] = useState<TextTrack[]>([]);
   const [selectedTextTrack, setSelectedTextTrack] = useState<number>(-1);
-  const videoRef = useRef<VideoRef | null>(null);
+  const videoRef = useRef<VideoHandle | null>(null);
 
   // Keep the engine pointing at the live ref.
   useEffect(() => {
-    mediaEngineRef.current = createMediaEngine(videoRef);
+    mediaEngineRef.current = createMediaEngine(videoRef as React.RefObject<VideoHandle | null>);
   }, []);
 
   const { updateResumePosition, markPlayed } = useContext(LibraryContext);
@@ -125,8 +133,6 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       updateResumePosition(uri, pos);
     });
     service.setOnComplete((uri) => {
-      // Mark the video as played and clear its resume position so it does not
-      // appear in "Continue Watching" after finishing.
       markPlayed(uri);
       updateResumePosition(uri, 0);
     });
@@ -135,8 +141,6 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       setCurrentVideo(snapshot.currentVideo);
       setQueueState(snapshot.queue);
       setCurrentIndex(snapshot.currentIndex);
-      // Treat 'loading' as playing for the `paused` prop so the video autoplays
-      // once prepared; buffering is tracked separately and does not pause.
       setIsPlaying(snapshot.state === 'playing' || snapshot.state === 'loading');
       setBuffering(snapshot.buffering);
       setPosition(snapshot.position);
@@ -164,7 +168,6 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
 
   const togglePlay = useCallback(() => {
     playbackServiceRef.current.togglePlay();
-    // Reflect the new intended state on the native player immediately.
     if (playbackServiceRef.current.snapshot.state === 'playing') {
       mediaEngineRef.current.play();
     } else {
@@ -180,6 +183,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
 
   const setPlaybackSpeed = useCallback((speed: number) => {
     playbackServiceRef.current.setPlaybackSpeed(speed);
+    mediaEngineRef.current.setRate(speed);
   }, []);
 
   const setVolume = useCallback((v: number) => {
@@ -189,6 +193,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
 
   const toggleMute = useCallback(() => {
     playbackServiceRef.current.toggleMute();
+    mediaEngineRef.current.setMuted(!playbackServiceRef.current.snapshot.isMuted ? false : true);
+    // Sync with actual snapshot
+    const muted = playbackServiceRef.current.snapshot.isMuted;
+    mediaEngineRef.current.setMuted(muted);
   }, []);
 
   const next = useCallback(() => {
@@ -220,11 +228,53 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     mediaEngineRef.current.stop();
   }, []);
 
-  const onProgress = useCallback((progress: { currentTime: number }) => {
-    setPosition(progress.currentTime);
-    playbackServiceRef.current.setPosition(progress.currentTime);
+  // Unified obsidian handler — single source of truth for state + buffering + ended/error
+  const onStateChange = useCallback((state: ObsidianPlaybackState) => {
+    const mapped = mapObsidianStatus(state.status);
+    // Drive PlaybackService state machine from native truth
+    if (state.status === 'error') {
+      playbackServiceRef.current.setError();
+      if (state.error) console.warn('Video error:', state.error);
+    } else if (state.status === 'ended') {
+      playbackServiceRef.current.onEnd();
+    } else if (state.status === 'buffering') {
+      playbackServiceRef.current.setBuffering(true);
+    } else {
+      playbackServiceRef.current.setBuffering(false);
+      if (state.status === 'playing' || state.status === 'ready') {
+        playbackServiceRef.current.setPlaying(true);
+      } else if (state.status === 'paused') {
+        playbackServiceRef.current.setPlaying(false);
+      } else if (state.status === 'loading') {
+        playbackServiceRef.current.setState('loading');
+      }
+    }
+
+    // Sync duration / position from obsidian state
+    if (state.duration > 0 && state.duration !== duration) {
+      setDuration(state.duration);
+      playbackServiceRef.current.setDuration(state.duration);
+    }
+    if (state.status === 'ready' && state.duration > 0) {
+      // Initial load — emit legacy onLoad equivalent
+      setAudioTracks([]);
+      setTextTracks([]);
+    }
+    // Keep React state in sync for UI (buffering covers loading/buffering)
+    setPlaybackState(mapped);
+    setBuffering(state.status === 'buffering' || state.status === 'loading');
+  }, [duration]);
+
+  const onProgress = useCallback((pos: number, dur: number) => {
+    setPosition(pos);
+    if (dur > 0) {
+      setDuration(dur);
+      playbackServiceRef.current.setDuration(dur);
+    }
+    playbackServiceRef.current.setPosition(pos);
   }, []);
 
+  // Legacy shims — map from onStateChange
   const onLoad = useCallback((data: { duration: number; audioTracks?: AudioTrack[]; textTracks?: TextTrack[]; currentTime?: number }) => {
     setDuration(data.duration);
     playbackServiceRef.current.setDuration(data.duration);
@@ -249,7 +299,6 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   }, []);
 
   const onPlaybackStateChanged = useCallback((data: { isPlaying: boolean; isSeeking: boolean }) => {
-    // Native truth about play/pause; reconcile the service state machine.
     playbackServiceRef.current.setPlaying(data.isPlaying);
   }, []);
 
@@ -259,26 +308,27 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   }, []);
 
   const enterPiP = useCallback(() => {
+    // obsidian-media-player 0.1 has no PiP command yet — keep as no-op but update UI optimistically
     try {
-      videoRef.current?.enterPictureInPicture?.();
+      // Future: (videoRef.current as any)?.enterPiP?.()
+      pipService.setActive(true);
+      setIsPiPActive(true);
     } catch {
-      // PiP may be unavailable on this device/OS; ignore.
+      // ignore
     }
   }, []);
 
   const exitPiP = useCallback(() => {
     try {
-      videoRef.current?.exitPictureInPicture?.();
+      pipService.setActive(false);
+      setIsPiPActive(false);
     } catch {
       // ignore
     }
   }, []);
 
   const toggleBackgroundAudio = useCallback(() => {
-    setIsBackgroundAudioEnabled((enabled) => {
-      const nextEnabled = !enabled;
-      return nextEnabled;
-    });
+    setIsBackgroundAudioEnabled((enabled) => !enabled);
   }, []);
 
   const value = useMemo(
@@ -287,7 +337,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       playbackSpeed, volume, isMuted, videoRef,
       playVideo, togglePlay, seekTo, setPlaybackSpeed, setVolume, toggleMute,
       next, previous, setQueue, addToQueue, removeFromQueue, moveQueueItem, clearQueue,
-      onProgress, onLoad, onEnd, onError, onBuffer, onPlaybackStateChanged, onPictureInPictureStatusChanged,
+      onProgress, onStateChange, onLoad, onEnd, onError, onBuffer, onPlaybackStateChanged, onPictureInPictureStatusChanged,
       audioTracks, selectedAudioTrack, setSelectedAudioTrack,
       textTracks, selectedTextTrack, setSelectedTextTrack,
       isPiPActive, enterPiP, exitPiP,
@@ -299,7 +349,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       playbackSpeed, volume, isMuted, videoRef,
       playVideo, togglePlay, seekTo, setPlaybackSpeed, setVolume, toggleMute,
       next, previous, setQueue, addToQueue, removeFromQueue, moveQueueItem, clearQueue,
-      onProgress, onLoad, onEnd, onError, onBuffer, onPlaybackStateChanged, onPictureInPictureStatusChanged,
+      onProgress, onStateChange, onLoad, onEnd, onError, onBuffer, onPlaybackStateChanged, onPictureInPictureStatusChanged,
       audioTracks, selectedAudioTrack, setSelectedAudioTrack,
       textTracks, selectedTextTrack, setSelectedTextTrack,
       isPiPActive, enterPiP, exitPiP,

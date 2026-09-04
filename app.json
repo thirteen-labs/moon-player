@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Aura",
+    "name": "Moon Player",
     "slug": "aura-player",
     "version": "2.0.0",
     "orientation": "default",
@@ -21,10 +21,9 @@
       ],
       "expo-router",
       [
-        "react-native-video",
+        "obsidian-media-player/plugin",
         {
-          "enableAndroidPictureInPicture": true,
-          "enableBackgroundAudio": true
+          "backgroundAudio": true
         }
       ],
       "expo-image"
@@ -50,7 +49,7 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "appName": "Aura",
+      "appName": "Moon Player",
       "appVersion": "2.0.0"
     }
   }

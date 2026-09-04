@@ -1,8 +1,11 @@
 import { Scanner } from './Scanner';
 import { MetadataExtractor } from './MetadataExtractor';
-import { ThumbnailService } from './ThumbnailService';
-import { requestPermissions } from '@obsidian_north/react-native-mediastore';
-import { Directory, File } from 'expo-file-system';
+import { ThumbnailService, THUMBNAIL_SIZE } from './ThumbnailService';
+import {
+  requestPermissions,
+  readDirectory,
+  getPathByUri,
+} from '@obsidian_north/react-native-mediastore';
 import type {
   VideoFile,
   LibraryVideo,
@@ -61,6 +64,8 @@ export class LibraryService {
 
       let thumbnails = new Map<string, string>();
       try {
+        // Use mediastore `getVideoThumbnail(id, width, height)` via ThumbnailService
+        // Bounded concurrency keeps scan responsive while native generates thumbnails.
         thumbnails = await this.thumbnailService.generateBatch(
           allFiles,
           (current, total) => {
@@ -71,9 +76,10 @@ export class LibraryService {
               phase: 'extracting',
             });
           },
+          { width: THUMBNAIL_SIZE.list.width, height: THUMBNAIL_SIZE.list.height },
         );
       } catch (e) {
-        console.warn('[LibraryService] thumbnail generation failed, continuing without it:', e);
+        console.warn('[LibraryService] mediastore thumbnail generation failed, continuing without it:', e);
       }
 
       const added: LibraryVideo[] = [];
@@ -130,7 +136,15 @@ export class LibraryService {
   async fetchAdditionalUris(uris: string[], onProgress?: ScanCallback): Promise<LibraryVideo[]> {
     await requestPermissions();
     const files = await this.scanner.scanUris(uris, onProgress);
-    const metadataResults = await this.metadataExtractor.extractBatch(files, onProgress);
+    const [metadataResults, thumbnailMap] = await Promise.all([
+      this.metadataExtractor.extractBatch(files, onProgress),
+      this.thumbnailService
+        .generateBatch(files, undefined, {
+          width: THUMBNAIL_SIZE.list.width,
+          height: THUMBNAIL_SIZE.list.height,
+        })
+        .catch(() => new Map<string, string>()),
+    ]);
     const added: LibraryVideo[] = [];
     const now = Date.now();
 
@@ -143,7 +157,7 @@ export class LibraryService {
         file,
         metadata,
         subtitles,
-        thumbnailUri: null,
+        thumbnailUri: thumbnailMap.get(file.uri) ?? null,
         addedAt: now,
         lastPlayedAt: null,
         playCount: 0,
@@ -187,34 +201,56 @@ export class LibraryService {
     return this.scanInProgress;
   }
 
+  /**
+   * Find subtitle files alongside the video using the latest mediastore file
+   * APIs: `getPathByUri` + `readDirectory`. This replaces the previous
+   * `expo-file-system` Directory walk and works with both content:// and
+   * file:// URIs via the native MediaStore file table.
+   */
   private async findSubtitles(video: VideoFile): Promise<SubtitleFile[]> {
     const baseName = getFileNameWithoutExt(video.name);
-    const dirPath = video.path.slice(0, video.path.lastIndexOf('/'));
     const subtitles: SubtitleFile[] = [];
 
+    // Resolve the real filesystem parent directory for the video.
+    let dirPath: string | null = null;
     try {
-      const dir = new Directory(dirPath);
-      if (!dir.exists) return subtitles;
+      // Try to resolve content:// URI to a filesystem path first.
+      const resolved = await getPathByUri(video.uri);
+      if (resolved) {
+        dirPath = resolved.slice(0, resolved.lastIndexOf('/'));
+      }
+    } catch {
+      // Ignore resolution failure — fall back to path parsing.
+    }
+    if (!dirPath) {
+      // Fallback: derive directory from video.path / uri.
+      const src = video.path || video.uri;
+      const idx = src.lastIndexOf('/');
+      if (idx > 0) dirPath = src.slice(0, idx);
+    }
+    if (!dirPath) return subtitles;
 
-      const entries = dir.list();
+    try {
+      const entries = await readDirectory(dirPath);
 
       for (const entry of entries) {
-        if (!(entry instanceof File)) continue;
+        if (entry.isDirectory) continue;
         if (!isSubtitleFile(entry.name)) continue;
 
         const entryBase = getFileNameWithoutExt(entry.name);
         if (entryBase !== baseName && !entryBase.startsWith(baseName)) continue;
 
+        const ext = `.${entry.name.split('.').pop()?.toLowerCase() ?? ''}` as SubtitleFile['extension'];
         subtitles.push({
-          uri: entry.uri,
-          path: entry.uri,
+          uri: entry.path,
+          path: entry.path,
           name: entry.name,
-          extension: entry.extension.toLowerCase() as SubtitleFile['extension'],
+          extension: ext,
           language: inferLanguageFromFilename(entry.name),
         });
       }
     } catch {
-      // No subtitles found
+      // No subtitles found or directory unreadable (permissions, scoped storage).
     }
 
     return subtitles;

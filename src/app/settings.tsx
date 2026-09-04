@@ -311,12 +311,12 @@ function AboutSettings({ onBack }: { onBack: () => void }) {
         <View style={{ width: 80, height: 80, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
           <Text style={{ fontSize: 36, color: colors.background }}>🎬</Text>
         </View>
-        <Text style={{ color: colors.text, fontSize: typography.sizes['2xl'], fontWeight: typography.weights.bold }}>Aura</Text>
+        <Text style={{ color: colors.text, fontSize: typography.sizes['2xl'], fontWeight: typography.weights.bold }}>Moon Player</Text>
         <Text style={{ color: colors.textSecondary, fontSize: typography.sizes.sm, marginTop: spacing.xs }}>Offline Video Player</Text>
         <Text style={{ color: colors.textTertiary, fontSize: typography.sizes.xs, marginTop: spacing.xs }}>Version 1.0.0</Text>
       </View>
       {[
-        { label: 'Developer', value: 'Aura Team' },
+        { label: 'Developer', value: 'Moon Player Team' },
         { label: 'Framework', value: 'React Native + Expo' },
         { label: 'Platform', value: 'Android / iOS / Web' },
         { label: 'Open Source', value: 'MIT License' },

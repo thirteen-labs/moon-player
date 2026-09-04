@@ -1,4 +1,5 @@
 import {
+  getMetadata,
   getDetailedMetadataByUri,
   type DetailedMetadata,
 } from '@obsidian_north/react-native-mediastore';
@@ -35,11 +36,30 @@ function toMetadata(det: DetailedMetadata): VideoMetadata {
 }
 
 export class MetadataExtractor {
+  /**
+   * Extract metadata for a single file using the latest `getMetadata` API.
+   * Uses level "full" for deep technical extraction (MediaExtractor / AVAsset).
+   * Falls back to `getDetailedMetadataByUri` for backwards compatibility.
+   */
   async extract(file: VideoFile): Promise<VideoMetadata | null> {
+    try {
+      // Latest API: structured MetadataResult with level control.
+      const result = await getMetadata(file.uri, { level: 'full' });
+      // Handle both new MetadataResult wrapper and legacy DetailedMetadata.
+      const det: DetailedMetadata | null =
+        result && typeof result === 'object' && 'metadata' in result
+          ? (((result as unknown) as { metadata: DetailedMetadata | null }).metadata ?? null)
+          : ((result as unknown) as DetailedMetadata | null);
+
+      if (det) return toMetadata(det);
+    } catch {
+      // Fall through to legacy path
+    }
+
     try {
       const det = await getDetailedMetadataByUri(file.uri);
       if (!det) return null;
-      return toMetadata(det);
+      return toMetadata(det as DetailedMetadata);
     } catch {
       return null;
     }

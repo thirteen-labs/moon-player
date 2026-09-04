@@ -18,7 +18,7 @@ interface TopBarProps {
 }
 
 export function TopBar({
-  title = 'Aura',
+  title = 'Moon Player',
   showBack = false,
   onBack,
   showFilter = true,
